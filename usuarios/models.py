@@ -1,8 +1,10 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models.functions import Replace
+from django.utils import timezone
 
-from .validators import anio_actual
+from .validators import ESPACIOS_CEDULA, anio_actual, validar_cedula
 
 
 class Categoria(models.Model):
@@ -214,3 +216,49 @@ class Unidad(models.Model):
     @property
     def deposito_garantia(self):
         return self.maquinaria.deposito_garantia
+
+
+def expresion_cedula_normalizada():
+    expresion = models.F('cedula')
+    for separador in '-' + ESPACIOS_CEDULA:
+        expresion = Replace(expresion, models.Value(separador), models.Value(''))
+    return expresion
+
+
+class Operador(models.Model):
+    """Registro del negocio sobre la tabla legacy; no es un usuario de acceso."""
+
+    id = models.AutoField(primary_key=True, db_column='IdOperador')
+    cedula = models.CharField(max_length=20, unique=True, db_column='Cedula', validators=[validar_cedula])
+    cedula_normalizada = models.GeneratedField(
+        expression=expresion_cedula_normalizada(),
+        output_field=models.CharField(max_length=20), db_persist=True,
+        unique=True, db_column='CedulaNormalizada',
+    )
+    nombre = models.CharField(max_length=80, db_column='Nombre')
+    apellido = models.CharField(max_length=80, blank=True, default='', db_column='Apellido')
+    telefono = models.CharField(max_length=20, blank=True, null=True, db_column='Telefono')
+    email = models.EmailField(max_length=100, blank=True, null=True, db_column='Email')
+    direccion = models.CharField(max_length=200, blank=True, null=True, db_column='Direccion')
+    fecha_nacimiento = models.DateField(blank=True, null=True, db_column='FechaNacimiento')
+    fecha_contratacion = models.DateField(blank=True, null=True, db_column='FechaContratacion')
+    numero_licencia = models.CharField(max_length=30, blank=True, null=True, db_column='NumeroLicencia')
+    tipo_licencia = models.CharField(max_length=10, blank=True, null=True, db_column='CategoriaLicencia')
+    fecha_vencimiento = models.DateField(blank=True, null=True, db_column='FechaVencimientoLicencia')
+    estado = models.CharField(max_length=20, default='Activo', db_column='Estado')
+    fecha_creacion = models.DateTimeField(default=timezone.now, editable=False, db_column='FechaCreacion')
+
+    class Meta:
+        db_table = 'Operador'
+        ordering = ('nombre', 'apellido', 'id')
+
+    @property
+    def nombre_completo(self):
+        return f'{self.nombre} {self.apellido}'.strip()
+
+    @property
+    def activo(self):
+        return self.estado == 'Activo'
+
+    def __str__(self):
+        return self.nombre_completo

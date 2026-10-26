@@ -3,8 +3,8 @@ from django.core.validators import MaxValueValidator
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Categoria, Maquinaria, Unidad
-from .validators import anio_actual
+from .models import Categoria, Maquinaria, Operador, Unidad
+from .validators import anio_actual, normalizar_cedula, validar_cedula
 
 
 class MaquinariaForm(forms.Form):
@@ -200,3 +200,42 @@ class MaquinariaEdicionForm(MaquinariaForm):
             unidad, {campo: datos[campo] for campo in self.CAMPOS_UNIDAD}, fecha
         )
         return unidad
+
+
+class OperadorForm(forms.Form):
+    nombre_completo = forms.CharField(label='Nombre completo', max_length=161, strip=True)
+    cedula = forms.CharField(label='Cédula', max_length=60, validators=[validar_cedula])
+    telefono = forms.CharField(label='Teléfono', max_length=20, strip=True)
+    direccion = forms.CharField(label='Dirección', max_length=200, strip=True)
+    tipo_licencia = forms.CharField(label='Tipo de licencia', max_length=10, strip=True)
+    fecha_vencimiento = forms.DateField(
+        label='Fecha de vencimiento', input_formats=('%Y-%m-%d',),
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+    )
+
+    def clean_nombre_completo(self):
+        nombre = ' '.join(self.cleaned_data['nombre_completo'].split())
+        # Conservar el texto completo sin inferir cuáles palabras son apellidos.
+        # La tabla existente dispone de dos columnas de 80 caracteres.
+        corte = len(nombre) if len(nombre) <= 80 else nombre.rfind(' ', 0, 81)
+        if corte < 1 or len(nombre[corte:].strip()) > 80:
+            raise forms.ValidationError('El nombre debe caber en dos partes de hasta 80 caracteres.')
+        self.partes_nombre = (nombre[:corte], nombre[corte:].strip())
+        return nombre
+
+    def clean_cedula(self):
+        cedula = normalizar_cedula(self.cleaned_data['cedula'])
+        if Operador.objects.filter(cedula_normalizada=cedula).exists():
+            raise forms.ValidationError('Ya existe un operador con esta cédula.')
+        return cedula
+
+    @transaction.atomic
+    def save(self):
+        datos = self.cleaned_data
+        nombre, apellido = self.partes_nombre
+        return Operador.objects.create(
+            nombre=nombre, apellido=apellido, cedula=datos['cedula'],
+            telefono=datos['telefono'], direccion=datos['direccion'],
+            tipo_licencia=datos['tipo_licencia'], fecha_vencimiento=datos['fecha_vencimiento'],
+            estado='Activo',
+        )

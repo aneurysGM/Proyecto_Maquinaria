@@ -1,0 +1,20 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Detalle de {{ operador.nombre_completo }}{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <div><p class="eyebrow">Operador</p><h1>{{ operador.nombre_completo }}</h1></div>
+    <a class="button button-secondary" href="{% url 'operador_lista' %}">Volver al listado</a>
+</header>
+<section class="card">
+    <h2>Datos del operador</h2>
+    <dl class="details-grid">
+        <div><dt>Nombre completo</dt><dd>{{ operador.nombre_completo }}</dd></div>
+        <div><dt>Cédula</dt><dd>{{ operador.cedula }}</dd></div>
+        <div><dt>Teléfono</dt><dd>{{ operador.telefono|default:"No especificado" }}</dd></div>
+        <div><dt>Dirección</dt><dd>{{ operador.direccion|default:"No especificada" }}</dd></div>
+        <div><dt>Tipo de licencia</dt><dd>{{ operador.tipo_licencia|default:"No especificado" }}</dd></div>
+        <div><dt>Fecha de vencimiento</dt><dd>{{ operador.fecha_vencimiento|date:"d/m/Y"|default:"No especificada" }}</dd></div>
+        <div><dt>Estado</dt><dd>{{ operador.estado }}</dd></div>
+    </dl>
+</section>
+{% endblock %}

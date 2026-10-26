@@ -5,9 +5,9 @@ from django.db import IntegrityError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import MaquinariaEdicionForm, MaquinariaForm
+from .forms import MaquinariaEdicionForm, MaquinariaForm, OperadorForm
 from .roles import permisos_panel
-from .models import Unidad
+from .models import Operador, Unidad
 
 
 def acceso_denegado(request, exception):
@@ -113,3 +113,34 @@ def maquinaria_editar(request, maquinaria_id):
         request, 'usuarios/maquinaria_form.html',
         {'form': form, 'edicion': True, 'maquinaria': unidad},
     )
+
+
+@login_required
+def operador_registrar(request):
+    if not permisos_panel(request.user)['puede_registrar_operador']:
+        raise PermissionDenied
+    form = OperadorForm(request.POST if request.method == 'POST' else None)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            operador = form.save()
+        except IntegrityError:
+            form.add_error(None, 'No se pudo registrar el operador. Comprueba que la cédula no esté registrada y vuelve a intentarlo.')
+        else:
+            messages.success(request, 'El operador se registró correctamente.')
+            return redirect('operador_detalle', operador_id=operador.pk)
+    return render(request, 'usuarios/operador_form.html', {'form': form})
+
+
+@login_required
+def operador_lista(request):
+    if not permisos_panel(request.user)['puede_consultar_operadores']:
+        raise PermissionDenied
+    return render(request, 'usuarios/operador_lista.html', {'operadores': Operador.objects.all()})
+
+
+@login_required
+def operador_detalle(request, operador_id):
+    if not permisos_panel(request.user)['puede_consultar_operadores']:
+        raise PermissionDenied
+    operador = get_object_or_404(Operador, pk=operador_id)
+    return render(request, 'usuarios/operador_detalle.html', {'operador': operador})

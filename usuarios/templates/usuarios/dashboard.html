@@ -27,4 +27,14 @@
     {% else %}
         <section class="card"><p>Tu cuenta todavía no tiene un rol asignado. Solicita acceso al administrador.</p></section>
     {% endif %}
+    {% if puede_registrar_operador %}
+    <section class="card">
+        <h2>Operadores</h2>
+        <p>Registra operadores y consulta sus datos de contacto y licencia.</p>
+        <div class="actions">
+            <a class="button" href="{% url 'operador_registrar' %}">Registrar operador</a>
+            <a class="button button-secondary" href="{% url 'operador_lista' %}">Consultar operadores</a>
+        </div>
+    </section>
+    {% endif %}
 {% endblock %}
