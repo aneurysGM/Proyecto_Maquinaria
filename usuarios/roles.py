@@ -11,4 +11,5 @@ def permisos_panel(usuario):
         ),
         'puede_consultar_maquinaria': administrador or supervisor,
         'puede_registrar_maquinaria': administrador,
+        'puede_editar_maquinaria': administrador,
     }

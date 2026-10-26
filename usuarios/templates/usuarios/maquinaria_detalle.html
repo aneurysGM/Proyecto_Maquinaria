@@ -1,4 +1,5 @@
 {% extends 'usuarios/base.html' %}
+{% load tz %}
 {% block title %}Detalle de {{ maquinaria.nombre }}{% endblock %}
 {% block content %}
 <header class="page-heading">
@@ -7,7 +8,12 @@
         <h1>{{ maquinaria.nombre }}</h1>
         <p>{{ maquinaria.marca }} {{ maquinaria.modelo }}</p>
     </div>
+    <div class="actions">
+        {% if puede_editar_maquinaria %}
+        <a class="button" href="{% url 'maquinaria_editar' maquinaria_id=maquinaria.id %}">Editar maquinaria</a>
+        {% endif %}
     <a class="button button-secondary" href="{% url 'maquinaria_lista' %}">Volver al listado</a>
+    </div>
 </header>
 
 <section class="card">
@@ -23,6 +29,7 @@
         <div><dt>Tarifa semanal</dt><dd>{{ maquinaria.tarifa_semanal }}</dd></div>
         <div><dt>Tarifa mensual</dt><dd>{{ maquinaria.tarifa_mensual }}</dd></div>
         <div><dt>Depósito de garantía</dt><dd>{{ maquinaria.deposito_garantia }}</dd></div>
+        <div><dt>Última modificación del catálogo</dt><dd>{% timezone "America/Santo_Domingo" %}{{ maquinaria.maquinaria.fecha_modificacion|date:"d/m/Y H:i:s"|default:"Sin modificaciones registradas" }}{% endtimezone %}</dd></div>
     </dl>
 </section>
 
@@ -35,6 +42,7 @@
         <div><dt>Horas de uso</dt><dd>{{ maquinaria.horas_uso }}</dd></div>
         <div><dt>Fecha de adquisición</dt><dd>{{ maquinaria.fecha_adquisicion|default:"No especificada" }}</dd></div>
         <div><dt>Ubicación actual</dt><dd>{{ maquinaria.ubicacion_actual|default:"No especificada" }}</dd></div>
+        <div><dt>Última modificación de la unidad</dt><dd>{% timezone "America/Santo_Domingo" %}{{ maquinaria.fecha_modificacion|date:"d/m/Y H:i:s"|default:"Sin modificaciones registradas" }}{% endtimezone %}</dd></div>
     </dl>
 </section>
 {% endblock %}

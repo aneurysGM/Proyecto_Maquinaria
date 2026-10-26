@@ -1,6 +1,7 @@
 from django import forms
 from django.core.validators import MaxValueValidator
 from django.db import transaction
+from django.utils import timezone
 
 from .models import Categoria, Maquinaria, Unidad
 from .validators import anio_actual
@@ -77,7 +78,7 @@ class MaquinariaForm(forms.Form):
         label='Fecha de adquisición',
         required=False,
         input_formats=('%Y-%m-%d',),
-        widget=forms.DateInput(attrs={'type': 'date'}),
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
     )
     anio_fabricacion = forms.IntegerField(
         label='Año de fabricación', min_value=1,
@@ -93,13 +94,19 @@ class MaquinariaForm(forms.Form):
 
     def clean_codigo(self):
         codigo = self.cleaned_data['codigo']
-        if Maquinaria.objects.filter(codigo__iexact=codigo).exists():
+        coincidencias = Maquinaria.objects.filter(codigo__iexact=codigo)
+        if getattr(self, 'unidad', None) is not None:
+            coincidencias = coincidencias.exclude(pk=self.unidad.maquinaria_id)
+        if coincidencias.exists():
             raise forms.ValidationError('Ya existe una maquinaria con este código.')
         return codigo
 
     def clean_numero_serie(self):
         numero_serie = self.cleaned_data['numero_serie']
-        if Unidad.objects.filter(numero_serie__iexact=numero_serie).exists():
+        coincidencias = Unidad.objects.filter(numero_serie__iexact=numero_serie)
+        if getattr(self, 'unidad', None) is not None:
+            coincidencias = coincidencias.exclude(pk=self.unidad.pk)
+        if coincidencias.exists():
             raise forms.ValidationError(
                 'Ya existe una maquinaria con este número de serie.'
             )
@@ -134,3 +141,62 @@ class MaquinariaForm(forms.Form):
             anio_fabricacion=datos['anio_fabricacion'],
             ubicacion_actual=datos['ubicacion_actual'],
         )
+
+
+class MaquinariaEdicionForm(MaquinariaForm):
+    CAMPOS_CATALOGO = (
+        'codigo', 'nombre', 'marca', 'modelo', 'costo_adquisicion',
+        'tarifa_diaria', 'tarifa_semanal', 'tarifa_mensual', 'deposito_garantia',
+    )
+    CAMPOS_UNIDAD = (
+        'numero_serie', 'estado', 'horas_uso', 'fecha_adquisicion',
+        'anio_fabricacion', 'ubicacion_actual',
+    )
+
+    def __init__(self, *args, unidad, **kwargs):
+        self.unidad = unidad
+        inicial = {
+            campo: getattr(unidad.maquinaria, campo)
+            for campo in self.CAMPOS_CATALOGO
+        }
+        inicial.update({
+            campo: getattr(unidad, campo) for campo in self.CAMPOS_UNIDAD
+        })
+        inicial['categoria'] = unidad.maquinaria.categoria.nombre
+        kwargs['initial'] = {**inicial, **kwargs.get('initial', {})}
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def _guardar_cambios(objeto, valores, fecha):
+        modificados = []
+        for campo, valor in valores.items():
+            if getattr(objeto, campo) != valor:
+                setattr(objeto, campo, valor)
+                modificados.append(campo)
+        if modificados:
+            objeto.fecha_modificacion = fecha
+            objeto.save(update_fields=[*modificados, 'fecha_modificacion'])
+
+    @transaction.atomic
+    def save(self):
+        # Bloquear catálogo y unidad mantiene ambos cambios en una transacción.
+        maquinaria = Maquinaria.objects.select_for_update().get(
+            pk=self.unidad.maquinaria_id
+        )
+        unidad = Unidad.objects.select_for_update().get(pk=self.unidad.pk)
+        datos = self.cleaned_data
+        categoria = Categoria.objects.filter(
+            nombre__iexact=datos['categoria']
+        ).first()
+        if categoria is None:
+            categoria = Categoria.objects.create(nombre=datos['categoria'])
+        catalogo = {campo: datos[campo] for campo in self.CAMPOS_CATALOGO}
+        catalogo['marca'] = catalogo['marca'] or None
+        catalogo['modelo'] = catalogo['modelo'] or None
+        catalogo['categoria'] = categoria
+        fecha = timezone.now()
+        self._guardar_cambios(maquinaria, catalogo, fecha)
+        self._guardar_cambios(
+            unidad, {campo: datos[campo] for campo in self.CAMPOS_UNIDAD}, fecha
+        )
+        return unidad

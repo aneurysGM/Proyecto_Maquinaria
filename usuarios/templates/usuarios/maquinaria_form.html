@@ -1,13 +1,20 @@
 {% extends 'usuarios/base.html' %}
-{% block title %}Registrar maquinaria{% endblock %}
+{% block title %}{% if edicion %}Editar maquinaria{% else %}Registrar maquinaria{% endif %}{% endblock %}
 {% block content %}
 <header class="page-heading">
     <div>
-        <p class="eyebrow">HU-02 · Sprint 2</p>
-        <h1>Registrar maquinaria</h1>
+        <p class="eyebrow">{% if edicion %}HU-04 · Sprint 3{% else %}HU-02 · Sprint 2{% endif %}</p>
+        <h1>{% if edicion %}Editar maquinaria{% else %}Registrar maquinaria{% endif %}</h1>
         <p>Completa los datos del catálogo y de la unidad física.</p>
     </div>
 </header>
+
+{% if edicion %}
+<div class="notice" role="note">
+    Los cambios en los datos de catálogo se aplican a todas las unidades de esta maquinaria.
+    Los datos de la unidad física solo cambian la unidad {{ maquinaria.numero_serie }}.
+</div>
+{% endif %}
 
 <form class="card form-card" method="post" novalidate>
     {% csrf_token %}
@@ -48,8 +55,8 @@
     </fieldset>
 
     <div class="actions">
-        <button class="button" type="submit">Guardar maquinaria</button>
-        <a class="button button-secondary" href="{% url 'maquinaria_lista' %}">Cancelar</a>
+        <button class="button" type="submit">{% if edicion %}Guardar cambios{% else %}Guardar maquinaria{% endif %}</button>
+        <a class="button button-secondary" href="{% if edicion %}{% url 'maquinaria_detalle' maquinaria_id=maquinaria.id %}{% else %}{% url 'maquinaria_lista' %}{% endif %}">Cancelar</a>
     </div>
 </form>
 {% endblock %}

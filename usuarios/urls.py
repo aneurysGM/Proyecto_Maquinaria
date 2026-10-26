@@ -26,6 +26,12 @@ urlpatterns = [
         name='maquinaria_detalle',
     ),
 
+    path(
+        'maquinaria/<int:maquinaria_id>/editar/',
+        views.maquinaria_editar,
+        name='maquinaria_editar',
+    ),
+
     # Cierra la sesión y redirige al login.
     path(
         'logout/',

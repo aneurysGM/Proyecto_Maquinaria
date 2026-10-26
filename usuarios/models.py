@@ -65,6 +65,10 @@ class Maquinaria(models.Model):
     )
     activo = models.BooleanField(default=True, db_column='Activo')
 
+    fecha_modificacion = models.DateTimeField(
+        blank=True, null=True, editable=False, db_column='FechaModificacion'
+    )
+
     class Meta:
         db_table = 'Maquinaria'
         ordering = ('codigo',)
@@ -139,6 +143,10 @@ class Unidad(models.Model):
     )
     identificador_legacy = models.UUIDField(
         blank=True, null=True, unique=True, db_column='IdentificadorLegacy'
+    )
+
+    fecha_modificacion = models.DateTimeField(
+        blank=True, null=True, editable=False, db_column='FechaModificacion'
     )
 
     class Meta:

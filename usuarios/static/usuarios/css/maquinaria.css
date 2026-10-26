@@ -105,6 +105,7 @@ th, td { padding: .9rem 1rem; border-bottom: 1px solid #e1e7eb; vertical-align: 
 th { color: #425766; background: #f7f9fa; font-size: .88rem; }
 tbody tr:last-child td { border-bottom: 0; }
 td small { display: block; margin-top: .2rem; color: #647684; }
+.maquinaria-acciones a + a { margin-inline-start: .75rem; }
 .status { display: inline-block; padding: .25rem .55rem; border-radius: 99px; background: #e8f3ec; color: #255e38; font-size: .86rem; }
 .empty-state { text-align: center; padding: 3rem 1.5rem; }
 .details-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 0; }

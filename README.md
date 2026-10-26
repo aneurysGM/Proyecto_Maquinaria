@@ -179,3 +179,59 @@ git diff --cached
 
 Trabaja en una rama y usa un pull request para no sobrescribir cambios de otras
 personas. Repositorio: <https://github.com/giorgioRD/Alquiler_maquinaria>.
+
+
+## HU-04: actualizar información de maquinaria
+
+El administrador puede abrir **Editar** desde el listado o **Editar maquinaria**
+desde el detalle. El formulario carga los datos actuales y valida los mismos
+campos obligatorios que el registro. El código de catálogo y el número de serie
+pueden conservar sus valores propios, pero no tomar los de otro registro.
+El supervisor y los usuarios sin rol reciben HTTP 403 ante GET y POST de edición.
+
+Los datos del catálogo se comparten entre todas sus unidades. El formulario
+advierte este alcance. La serie, ubicación, estado, año y horas de uso pertenecen
+solo a la unidad seleccionada. Ambos grupos se guardan en una transacción:
+un error revierte también los cambios de catálogo y cualquier categoría creada.
+
+La migración 0005_fechas_modificacion_maquinaria_unidad añade columnas nullable
+FechaModificacion a Maquinaria y Unidad. No inventa fechas para registros
+existentes. La edición web registra una fecha solo en el objeto cuyos datos
+cambian; abrir el formulario o guardar los mismos valores no modifica la fecha.
+El detalle muestra ambas fechas en la zona horaria de República Dominicana.
+Las fechas corresponden a la edición web HU-04, no a cambios directos por SQL.
+
+Para aplicar esta HU en otra base SQL Server, comprobar primero el destino y
+crear y verificar una copia de seguridad. Después ejecutar:
+
+    .\.venv\Scripts\python.exe manage.py showmigrations usuarios --plan
+    .\.venv\Scripts\python.exe manage.py sqlmigrate usuarios 0005
+    .\.venv\Scripts\python.exe manage.py migrate usuarios 0005_fechas_modificacion_maquinaria_unidad --noinput
+    .\.venv\Scripts\python.exe manage.py test usuarios --noinput
+    .\.venv\Scripts\python.exe manage.py runserver
+
+Prueba manual: entrar como administrador, abrir una unidad y editar su ubicación
+y una tarifa. Guardar, comprobar el mensaje de éxito y las fechas, y volver a
+consultar para verificar la persistencia. Intentar guardar un campo obligatorio
+vacío y una serie de otra unidad. Por último, entrar como supervisor y comprobar
+que la dirección de edición devuelve acceso denegado.
+
+Validación del 26 de octubre de 2026: después de las 26 pruebas iniciales con
+SQLite temporal, se aplicó la migración 0005 en `AlquilerEquipos` sobre SQL Server
+Express. Antes se creó un backup `COPY_ONLY` con `CHECKSUM` y se comprobó mediante
+`RESTORE VERIFYONLY WITH CHECKSUM`. El archivo del servidor es
+`C:\Program Files\Microsoft SQL Server\MSSQL17.SQLEXPRESS\MSSQL\Backup\AlquilerEquipos_antes_HU04_0005_20261026T223842Z.bak`.
+
+Se verificaron las dos columnas `FechaModificacion` de tipo `datetimeoffset`,
+nullable, y el registro de la migración en `django_migrations`. Se conservaron
+los recuentos de 4 catálogos y 4 unidades, todos con fecha de modificación `NULL`.
+No quedaron migraciones pendientes. `check` y `makemigrations --check --dry-run`
+pasaron sin incidencias.
+
+Las 26 pruebas también pasaron en la base temporal SQL Server
+`test_AlquilerEquipos`, aplicando toda la cadena de migraciones y eliminando la
+base temporal al terminar. Cubren permisos GET/POST, edición, validaciones,
+fechas y reversión de la transacción ante un fallo de guardado. No se encontraron
+triggers en las tablas de maquinaria de la base revisada. Esta ejecución no
+incluye pruebas de concurrencia entre editores ni una revisión visual en navegador;
+la prueba manual descrita arriba queda como comprobación de aceptación.
