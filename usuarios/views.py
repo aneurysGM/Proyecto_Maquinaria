@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
@@ -20,8 +21,17 @@ def acceso_denegado(request, exception):
 # Exige una sesión activa para acceder al dashboard.
 @login_required
 def dashboard(request):
-    # Muestra la plantilla del dashboard.
-    return render(request, "usuarios/dashboard.html")
+    usuario = request.user
+    
+    # Estas variables son las que tu base.html y tu dashboard.html necesitan:
+    context = {
+        'nombre_usuario': usuario.get_full_name() or usuario.username,
+        'rol_usuario': 'Supervisor' if usuario.is_staff else 'Usuario',
+        'puede_consultar_maquinaria': True,  # Cambia según la lógica de tu app
+        'puede_registrar_maquinaria': usuario.is_staff,
+    }
+    
+    return render(request, 'usuarios/dashboard.html', context)
 
 
 @login_required

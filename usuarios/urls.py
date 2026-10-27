@@ -31,4 +31,6 @@ urlpatterns = [
         LogoutView.as_view(next_page="login"),
         name="logout",
     ),
+    path("registro/", views.registro, name="registro"),
 ]
+
