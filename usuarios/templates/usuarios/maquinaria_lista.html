@@ -59,7 +59,11 @@
                         <td>{{ maquinaria.numero_serie }}</td>
                         <td><span class="status">{{ maquinaria.estado }}</span></td>
                         <td>{{ maquinaria.ubicacion_actual|default:"No especificada" }}</td>
-                        <td><a href="{% url 'maquinaria_detalle' maquinaria_id=maquinaria.id %}">Ver detalles</a></td>
+                        <td class="maquinaria-acciones"><a href="{% url 'maquinaria_detalle' maquinaria_id=maquinaria.id %}">Ver detalles</a>
+                            {% if puede_editar_maquinaria %}
+                            <a href="{% url 'maquinaria_editar' maquinaria_id=maquinaria.id %}">Editar</a>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% endfor %}
             </tbody>

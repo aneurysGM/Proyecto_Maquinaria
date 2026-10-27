@@ -1,9 +1,10 @@
 from django import forms
 from django.core.validators import MaxValueValidator
 from django.db import transaction
+from django.utils import timezone
 
-from .models import Categoria, Maquinaria, Unidad
-from .validators import anio_actual
+from .models import Categoria, Maquinaria, Operador, Unidad
+from .validators import anio_actual, normalizar_cedula, validar_cedula
 
 
 class MaquinariaForm(forms.Form):
@@ -77,7 +78,7 @@ class MaquinariaForm(forms.Form):
         label='Fecha de adquisición',
         required=False,
         input_formats=('%Y-%m-%d',),
-        widget=forms.DateInput(attrs={'type': 'date'}),
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
     )
     anio_fabricacion = forms.IntegerField(
         label='Año de fabricación', min_value=1,
@@ -93,13 +94,19 @@ class MaquinariaForm(forms.Form):
 
     def clean_codigo(self):
         codigo = self.cleaned_data['codigo']
-        if Maquinaria.objects.filter(codigo__iexact=codigo).exists():
+        coincidencias = Maquinaria.objects.filter(codigo__iexact=codigo)
+        if getattr(self, 'unidad', None) is not None:
+            coincidencias = coincidencias.exclude(pk=self.unidad.maquinaria_id)
+        if coincidencias.exists():
             raise forms.ValidationError('Ya existe una maquinaria con este código.')
         return codigo
 
     def clean_numero_serie(self):
         numero_serie = self.cleaned_data['numero_serie']
-        if Unidad.objects.filter(numero_serie__iexact=numero_serie).exists():
+        coincidencias = Unidad.objects.filter(numero_serie__iexact=numero_serie)
+        if getattr(self, 'unidad', None) is not None:
+            coincidencias = coincidencias.exclude(pk=self.unidad.pk)
+        if coincidencias.exists():
             raise forms.ValidationError(
                 'Ya existe una maquinaria con este número de serie.'
             )
@@ -133,4 +140,102 @@ class MaquinariaForm(forms.Form):
             fecha_adquisicion=datos['fecha_adquisicion'],
             anio_fabricacion=datos['anio_fabricacion'],
             ubicacion_actual=datos['ubicacion_actual'],
+        )
+
+
+class MaquinariaEdicionForm(MaquinariaForm):
+    CAMPOS_CATALOGO = (
+        'codigo', 'nombre', 'marca', 'modelo', 'costo_adquisicion',
+        'tarifa_diaria', 'tarifa_semanal', 'tarifa_mensual', 'deposito_garantia',
+    )
+    CAMPOS_UNIDAD = (
+        'numero_serie', 'estado', 'horas_uso', 'fecha_adquisicion',
+        'anio_fabricacion', 'ubicacion_actual',
+    )
+
+    def __init__(self, *args, unidad, **kwargs):
+        self.unidad = unidad
+        inicial = {
+            campo: getattr(unidad.maquinaria, campo)
+            for campo in self.CAMPOS_CATALOGO
+        }
+        inicial.update({
+            campo: getattr(unidad, campo) for campo in self.CAMPOS_UNIDAD
+        })
+        inicial['categoria'] = unidad.maquinaria.categoria.nombre
+        kwargs['initial'] = {**inicial, **kwargs.get('initial', {})}
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def _guardar_cambios(objeto, valores, fecha):
+        modificados = []
+        for campo, valor in valores.items():
+            if getattr(objeto, campo) != valor:
+                setattr(objeto, campo, valor)
+                modificados.append(campo)
+        if modificados:
+            objeto.fecha_modificacion = fecha
+            objeto.save(update_fields=[*modificados, 'fecha_modificacion'])
+
+    @transaction.atomic
+    def save(self):
+        # Bloquear catálogo y unidad mantiene ambos cambios en una transacción.
+        maquinaria = Maquinaria.objects.select_for_update().get(
+            pk=self.unidad.maquinaria_id
+        )
+        unidad = Unidad.objects.select_for_update().get(pk=self.unidad.pk)
+        datos = self.cleaned_data
+        categoria = Categoria.objects.filter(
+            nombre__iexact=datos['categoria']
+        ).first()
+        if categoria is None:
+            categoria = Categoria.objects.create(nombre=datos['categoria'])
+        catalogo = {campo: datos[campo] for campo in self.CAMPOS_CATALOGO}
+        catalogo['marca'] = catalogo['marca'] or None
+        catalogo['modelo'] = catalogo['modelo'] or None
+        catalogo['categoria'] = categoria
+        fecha = timezone.now()
+        self._guardar_cambios(maquinaria, catalogo, fecha)
+        self._guardar_cambios(
+            unidad, {campo: datos[campo] for campo in self.CAMPOS_UNIDAD}, fecha
+        )
+        return unidad
+
+
+class OperadorForm(forms.Form):
+    nombre_completo = forms.CharField(label='Nombre completo', max_length=161, strip=True)
+    cedula = forms.CharField(label='Cédula', max_length=60, validators=[validar_cedula])
+    telefono = forms.CharField(label='Teléfono', max_length=20, strip=True)
+    direccion = forms.CharField(label='Dirección', max_length=200, strip=True)
+    tipo_licencia = forms.CharField(label='Tipo de licencia', max_length=10, strip=True)
+    fecha_vencimiento = forms.DateField(
+        label='Fecha de vencimiento', input_formats=('%Y-%m-%d',),
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+    )
+
+    def clean_nombre_completo(self):
+        nombre = ' '.join(self.cleaned_data['nombre_completo'].split())
+        # Conservar el texto completo sin inferir cuáles palabras son apellidos.
+        # La tabla existente dispone de dos columnas de 80 caracteres.
+        corte = len(nombre) if len(nombre) <= 80 else nombre.rfind(' ', 0, 81)
+        if corte < 1 or len(nombre[corte:].strip()) > 80:
+            raise forms.ValidationError('El nombre debe caber en dos partes de hasta 80 caracteres.')
+        self.partes_nombre = (nombre[:corte], nombre[corte:].strip())
+        return nombre
+
+    def clean_cedula(self):
+        cedula = normalizar_cedula(self.cleaned_data['cedula'])
+        if Operador.objects.filter(cedula_normalizada=cedula).exists():
+            raise forms.ValidationError('Ya existe un operador con esta cédula.')
+        return cedula
+
+    @transaction.atomic
+    def save(self):
+        datos = self.cleaned_data
+        nombre, apellido = self.partes_nombre
+        return Operador.objects.create(
+            nombre=nombre, apellido=apellido, cedula=datos['cedula'],
+            telefono=datos['telefono'], direccion=datos['direccion'],
+            tipo_licencia=datos['tipo_licencia'], fecha_vencimiento=datos['fecha_vencimiento'],
+            estado='Activo',
         )

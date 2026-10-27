@@ -42,6 +42,7 @@ db.sqlite3-*
 /tmp/
 /temp/
 /output/
+/sprint3_work/
 *.tmp
 *.temp
 *.log

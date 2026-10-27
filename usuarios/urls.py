@@ -3,6 +3,9 @@ from django.contrib.auth.views import LoginView, LogoutView
 from . import views
 
 urlpatterns = [
+    path('operadores/', views.operador_lista, name='operador_lista'),
+    path('operadores/registrar/', views.operador_registrar, name='operador_registrar'),
+    path('operadores/<int:operador_id>/', views.operador_detalle, name='operador_detalle'),
     # Muestra el formulario y comprueba las credenciales.
     path(
         'login/',
@@ -24,6 +27,12 @@ urlpatterns = [
         'maquinaria/<int:maquinaria_id>/',
         views.maquinaria_detalle,
         name='maquinaria_detalle',
+    ),
+
+    path(
+        'maquinaria/<int:maquinaria_id>/editar/',
+        views.maquinaria_editar,
+        name='maquinaria_editar',
     ),
 
     # Cierra la sesión y redirige al login.
