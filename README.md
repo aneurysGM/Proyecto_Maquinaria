@@ -1,8 +1,9 @@
 # Sistema de alquiler de equipos
 
 Proyecto Django con inicio de sesión, panel por rol, registro, edición y consulta
-de maquinaria y registro y consulta de operadores. La aplicación usa SQL Server
-para cuentas, roles, sesiones, catálogo, unidades físicas y operadores.
+de maquinaria, registro y consulta de operadores e historial de mantenimiento
+por unidad física. La aplicación usa SQL Server para cuentas, roles, sesiones,
+catálogo, unidades físicas, operadores y mantenimientos.
 
 ## Requisitos
 
@@ -104,14 +105,17 @@ Se pueden indicar rutas distintas con `--sqlite` y `--json`.
 
 ## Roles y acceso
 
-| Rol | Consultar, filtrar y ver detalles | Registrar | Django Admin |
-| --- | --- | --- | --- |
-| Administrador (`is_superuser`) | Sí | Sí | Sí |
-| Supervisor (grupo `Supervisor`) | Sí | No | No |
-| Sin rol | No | No | No |
+| Rol activo | Consultar maquinaria | Registrar / editar maquinaria | Operadores | Registrar / consultar mantenimientos | Django Admin |
+| --- | --- | --- | --- | --- | --- |
+| Administrador (`is_superuser`) | Sí | Sí | Sí | Sí | Sí, con `is_staff` |
+| Supervisor (grupo `Supervisor`) | Sí | No | No | No | No |
+| Técnico (grupo `Técnico`) | Sí | No | No | Sí | No |
+| Sin rol | No | No | No | No | No |
 
-La vista de registro comprueba el rol en el servidor. Un Supervisor recibe HTTP
-403 aunque escriba directamente `/maquinaria/registrar/` o envíe un POST.
+Las vistas comprueban el rol en el servidor, antes de consultar o escribir.
+Un Supervisor recibe HTTP 403 aunque acceda directamente a las direcciones
+de registro o edición de maquinaria, operadores o mantenimiento, o envíe un POST.
+`is_staff` por sí solo no concede permisos en las pantallas del negocio.
 
 Para crear cuentas nuevas:
 
@@ -320,3 +324,122 @@ Comprobación visual pendiente de aceptación:
    a `/operadores/registrar/` debe devolver acceso denegado.
 7. Volver al listado de maquinaria como administrador y comprobar que **Ver
    detalles** y **Editar** siguen separados horizontalmente.
+
+## HU-07: registrar mantenimiento (Sprint 3)
+
+HU-04 y HU-05 ya están integradas en `origin/main` mediante el PR #3. HU-07
+se desarrolla en `feat/sprint3-hu07-mantenimiento` desde ese estado. HU-06
+(asignación de operadores) queda pendiente. El documento Word no se modifica.
+
+Técnico y Administrador pueden abrir **Mantenimientos** desde la navegación o
+**Registrar mantenimiento** desde el panel. El formulario exige unidad física,
+fecha válida, tipo (`Preventivo` o `Correctivo`), descripción de hasta 300
+caracteres y costo decimal no negativo, con hasta dos decimales. La selección
+muestra código y nombre de catálogo, serie, ID de unidad y estado. La fecha
+se introduce en el control de calendario; no se añade una restricción de
+fechas pasadas o futuras que la historia no pide.
+
+El técnico responsable se obtiene de la sesión, se muestra en pantalla y se
+guarda como relación protegida con el usuario Django; no es un campo editable.
+Un POST con otro `tecnico`, `tecnico_id`, estado o fecha de cierre no puede
+sobrescribir esos valores. Si un administrador registra la actividad, queda
+identificado ese administrador como responsable.
+
+Se reutiliza `Unidad.Estado='Mantenimiento'`, mostrado como **En mantenimiento**.
+Se admiten unidades activas con catálogo activo y estado `Disponible` o
+`Mantenimiento`; se rechazan `Alquilado`, `Baja` e inactivas. Admitir el estado
+`Mantenimiento` permite registrar más actividades sin inventar un cierre.
+Al guardar se bloquea y relee la unidad, se valida nuevamente su disponibilidad
+y se guardan mantenimiento y estado en una misma transacción. Un fallo revierte
+ambas operaciones. El catálogo y las otras unidades del mismo modelo se conservan.
+Las fechas `FechaModificacion` de HU-04 siguen correspondiendo a edición web.
+
+El historial en `/unidades/<id>/mantenimientos/` muestra fecha, tipo, descripción,
+costo y responsable, ordenados de más reciente a más antiguo. Se abre desde
+**Mantenimientos → Ver historial** o desde el detalle de maquinaria. Conserva
+acceso a unidades inactivas y registros antiguos sin técnico, que se identifican
+como **No registrado (registro anterior)**. Supervisor conserva su consulta de
+maquinaria; no recibe acceso nuevo a mantenimiento. La pertenencia a grupos es
+aditiva: asignar Técnico a un Supervisor conserva su grupo anterior.
+
+### Migración de mantenimiento
+
+`0007_integrar_mantenimiento` adopta `dbo.Mantenimiento` cuando existe y la
+crea únicamente si falta. Conserva `MantenimientoID`, `UnidadID`, `FechaInicio`,
+`FechaFin`, `Tipo`, `Descripcion` y `Costo`. Añade `TecnicoResponsableID` nullable
+para no inventar responsables anteriores, su clave foránea, la relación con
+`Unidad` si falta y restricciones de costo/tipo. También crea el grupo `Técnico`.
+Los registros web nuevos siempre exigen descripción y responsable.
+
+La migración comprueba primero columnas, tipos, clave primaria, relaciones y
+datos legacy. Si detecta un esquema incompatible, unidades inexistentes, costos
+negativos o tipos desconocidos, se detiene para revisión sin borrar ni corregir
+filas. No se debe usar `--fake` para ocultar ese problema. La adopción es
+irreversible mediante migración hacia atrás para proteger la tabla del negocio.
+Los procedimientos legacy de inicio/finalización no son utilizados por esta HU;
+`FechaFin` se conserva, pero no se ofrece cierre ni retorno automático a Disponible.
+
+En otra instalación, comprobar el destino, inspeccionar el esquema y crear y
+verificar un respaldo de SQL Server. Después ejecutar:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py migrate --plan
+.\.venv\Scripts\python.exe manage.py migrate --noinput
+.\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+.\.venv\Scripts\python.exe manage.py migrate --check
+.\.venv\Scripts\python.exe manage.py test usuarios --noinput
+```
+
+No es necesario ejecutar de nuevo los scripts SQL legacy ni crear manualmente
+otra tabla de mantenimiento. `sqlmigrate` no expande la operación Python de
+adopción: revisar también `usuarios/migrations/0007_integrar_mantenimiento.py`.
+
+### Crear o asignar un Técnico y probar
+
+```powershell
+.\.venv\Scripts\python.exe manage.py crear_tecnico tecnico1 --nombre "Ana" --apellido "Pérez"
+.\.venv\Scripts\python.exe manage.py changepassword tecnico1
+.\.venv\Scripts\python.exe manage.py runserver
+```
+
+El primer comando crea la cuenta o añade `Técnico` a una cuenta existente.
+Conserva contraseña, grupos y actividad existentes; rechaza cuentas con
+privilegios administrativos. Una cuenta nueva no puede iniciar sesión hasta
+establecer la contraseña. Si una cuenta ya tiene contraseña, se puede omitir
+`changepassword`. La cuenta debe estar activa. Desde Django Admin también se
+puede asignar el grupo **Técnico**, dejando `is_staff` e `is_superuser` desmarcados.
+
+Entrar en <http://127.0.0.1:8000/login/> como Técnico, abrir **Registrar
+mantenimiento**, seleccionar la serie correcta, completar los datos y guardar.
+Verificar confirmación, responsable, historial y estado **En mantenimiento**.
+Reabrir el historial desde **Mantenimientos** para comprobar persistencia.
+Usar una unidad destinada a pruebas si no se desea cambiar un equipo operativo.
+
+### Verificación y evidencias
+
+Validación del **27 de octubre de 2026**: **69 pruebas aprobadas en SQL Server**,
+las 40 anteriores y 29 nuevas de HU-07. Incluyen HU-04, HU-05, inicio/cierre de
+sesión, roles, validaciones, relaciones, historial y reversión transaccional.
+`check`, `makemigrations --check --dry-run` y `migrate --check` pasaron.
+La migración 0007 está aplicada en la base local `AlquilerEquipos`.
+
+Antes se creó un respaldo `COPY_ONLY, CHECKSUM`, verificado con
+`RESTORE VERIFYONLY WITH CHECKSUM`. El respaldo permanece fuera del repositorio.
+Se compararon exactamente todos los valores de las columnas originales de
+Categoria, Maquinaria, Unidad, Operador y Mantenimiento: sin cambios.
+Los recuentos se conservaron en 4, 4, 4, 1 y 0 respectivamente. Se verificaron
+ambas claves foráneas, las restricciones de costo/tipo y el grupo Técnico.
+También pasó el registro web sobre la tabla real dentro de una transacción
+revertida, sin dejar cuentas ni mantenimientos de prueba.
+
+El usuario reportó la revisión manual finalizada sin fallos en registro e
+historial, actualización de estado, rechazo de costo negativo, exclusión de
+unidades alquiladas o fuera de servicio, permisos de Técnico y Supervisor y
+regresión de HU-04/HU-05. Este reporte es independiente de las pruebas
+automatizadas. No se dan por realizadas otras comprobaciones manuales ni
+pruebas de carga o de concurrencia simultánea entre procesos. Las capturas y
+la actualización del documento Word siguen pendientes.
+
+Ver [guía de evidencias de HU-07](docs/hu07-mantenimiento.md) para las capturas,
+las comprobaciones SQL y el detalle de archivos modificados.

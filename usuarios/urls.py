@@ -3,6 +3,9 @@ from django.contrib.auth.views import LoginView, LogoutView
 from . import views
 
 urlpatterns = [
+    path('mantenimientos/', views.mantenimiento_lista, name='mantenimiento_lista'),
+    path('mantenimientos/registrar/', views.mantenimiento_registrar, name='mantenimiento_registrar'),
+    path('unidades/<int:unidad_id>/mantenimientos/', views.mantenimiento_historial, name='mantenimiento_historial'),
     path('operadores/', views.operador_lista, name='operador_lista'),
     path('operadores/registrar/', views.operador_registrar, name='operador_registrar'),
     path('operadores/<int:operador_id>/', views.operador_detalle, name='operador_detalle'),

@@ -1,6 +1,6 @@
 # Cuentas y roles
 
-Ambas cuentas usan `/login/` y llegan a `/dashboard/`. El nombre mostrado
+Todas las cuentas usan `/login/` y llegan a `/dashboard/`. El nombre mostrado
 es el nombre y apellido guardados en Django; si están vacíos, se muestra el
 nombre de usuario. La cuenta administrativa existente se conserva separada.
 
@@ -8,12 +8,15 @@ nombre de usuario. La cuenta administrativa existente se conserva separada.
 | --- | --- | --- | --- | --- |
 | Administrador (`is_superuser=True`, `is_staff=True`) | Administrador | Sí | Sí | Sí |
 | Grupo `Supervisor` | Supervisor | Sí | No | No, con `is_staff=False` |
+| Grupo `Técnico` | Técnico | Sí | No | No, con `is_staff=False` |
 | Usuario sin rol | Sin rol asignado | No | No | No, con `is_staff=False` |
 
 El acceso de Supervisor se ha definido como solo consulta para las funciones
 actualmente implementadas. La política de la aplicación está en
 `usuarios/roles.py`: pertenecer al grupo `Supervisor` habilita consulta y ser
-superusuario habilita registro. No se necesitan permisos individuales de Django.
+superusuario habilita registro de maquinaria y operadores. Técnico permite
+registrar y consultar mantenimiento por unidad; Supervisor no obtiene ese acceso.
+No se necesitan permisos individuales de Django.
 Las vistas comprueban esa política antes de consultar o escribir datos.
 
 ## Cuenta de supervisión
@@ -63,3 +66,30 @@ usuario, asigna su nombre y contraseña y selecciona el grupo `Supervisor`.
 Deja **Activo** marcado y **Es staff** y **Estado de superusuario** desmarcados.
 No asignes permisos individuales ni otros grupos administrativos. El supervisor
 entra por `/login/`; la gestión de usuarios permanece en la cuenta administrativa.
+
+## Cuenta de Técnico (HU-07)
+
+La migración 0007 crea el grupo `Técnico`. Para crear una cuenta o asignar una
+existente sin reemplazar su contraseña ni sus otros grupos:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py crear_tecnico tecnico1 --nombre "Ana" --apellido "Pérez"
+.\.venv\Scripts\python.exe manage.py changepassword tecnico1
+```
+
+`changepassword` es necesario para una cuenta nueva; si ya tiene contraseña,
+puede conservarla omitiendo ese comando. La cuenta debe estar activa. El comando
+no reactiva cuentas inactivas ni modifica cuentas `is_staff` o `is_superuser`.
+Desde Django Admin también puede asignarse el grupo a una cuenta activa sin
+marcar staff ni superusuario. La migración no crea cuentas personales.
+
+Técnico puede consultar maquinaria, registrar mantenimiento y consultar el
+historial de todas las unidades, incluso las desactivadas. No puede registrar
+ni editar maquinaria, consultar operadores ni acceder a Django Admin.
+El Administrador también puede registrar y consultar mantenimiento. La actividad
+queda vinculada al usuario autenticado que la registra, aunque después cambie
+su grupo. La eliminación de ese usuario queda protegida mientras tenga registros.
+
+Los grupos son aditivos: una cuenta Supervisor a la que se añada Técnico
+conserva los dos grupos; el panel muestra Técnico. Ninguna asignación de Técnico
+quita permisos anteriores ni concede privilegios de administración.

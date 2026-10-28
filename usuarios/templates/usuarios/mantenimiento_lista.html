@@ -1,0 +1,44 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Mantenimientos por unidad{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <div>
+        <p class="eyebrow">HU-07 · Sprint 3</p>
+        <h1>Mantenimientos por unidad</h1>
+        <p>Selecciona una unidad física para consultar su historial. Incluye unidades inactivas.</p>
+    </div>
+    {% if puede_registrar_mantenimiento %}
+    <a class="button" href="{% url 'mantenimiento_registrar' %}">Registrar mantenimiento</a>
+    {% endif %}
+</header>
+<form class="card" method="get">
+    <div class="field">
+        <label for="id_q">Buscar por código, nombre o número de serie</label>
+        <input id="id_q" name="q" type="search" value="{{ consulta }}">
+    </div>
+    <div class="actions">
+        <button class="button" type="submit">Buscar</button>
+        <a class="button button-secondary" href="{% url 'mantenimiento_lista' %}">Limpiar</a>
+    </div>
+</form>
+{% if unidades %}
+<div class="table-wrap card">
+    <table>
+        <thead><tr><th>Unidad</th><th>Catálogo / maquinaria</th><th>Número de serie</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+        <tbody>
+            {% for unidad in unidades %}
+            <tr>
+                <td>#{{ unidad.pk }}</td>
+                <td>{{ unidad.codigo }} · {{ unidad.nombre }}{% if not unidad.activo or not unidad.maquinaria.activo %}<small>Inactiva</small>{% endif %}</td>
+                <td>{{ unidad.numero_serie }}</td>
+                <td><span class="status">{{ unidad.get_estado_display }}</span></td>
+                <td><a href="{% url 'mantenimiento_historial' unidad_id=unidad.pk %}">Ver historial</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<section class="card empty-state"><h2>No se encontraron unidades</h2><p>Revisa los filtros o registra maquinaria con una cuenta de administrador.</p></section>
+{% endif %}
+{% endblock %}

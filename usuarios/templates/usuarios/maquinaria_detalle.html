@@ -12,6 +12,9 @@
         {% if puede_editar_maquinaria %}
         <a class="button" href="{% url 'maquinaria_editar' maquinaria_id=maquinaria.id %}">Editar maquinaria</a>
         {% endif %}
+        {% if puede_consultar_mantenimientos %}
+        <a class="button button-secondary" href="{% url 'mantenimiento_historial' unidad_id=maquinaria.id %}">Historial de mantenimiento</a>
+        {% endif %}
     <a class="button button-secondary" href="{% url 'maquinaria_lista' %}">Volver al listado</a>
     </div>
 </header>
@@ -38,7 +41,7 @@
     <dl class="details-grid">
         <div><dt>Número de serie</dt><dd>{{ maquinaria.numero_serie }}</dd></div>
         <div><dt>Año de fabricación</dt><dd>{{ maquinaria.anio_fabricacion|default_if_none:"No especificado" }}</dd></div>
-        <div><dt>Estado</dt><dd><span class="status">{{ maquinaria.estado }}</span></dd></div>
+        <div><dt>Estado</dt><dd><span class="status">{{ maquinaria.get_estado_display }}</span></dd></div>
         <div><dt>Horas de uso</dt><dd>{{ maquinaria.horas_uso }}</dd></div>
         <div><dt>Fecha de adquisición</dt><dd>{{ maquinaria.fecha_adquisicion|default:"No especificada" }}</dd></div>
         <div><dt>Ubicación actual</dt><dd>{{ maquinaria.ubicacion_actual|default:"No especificada" }}</dd></div>

@@ -1,0 +1,41 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Historial de {{ unidad.numero_serie }}{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <div>
+        <p class="eyebrow">HU-07 · Historial de mantenimiento</p>
+        <h1>Unidad #{{ unidad.pk }} · {{ unidad.numero_serie }}</h1>
+        <p>{{ unidad.codigo }} · {{ unidad.nombre }}</p>
+        <p>Estado actual: <span class="status">{{ unidad.get_estado_display }}</span>
+            {% if not unidad.activo or not unidad.maquinaria.activo %} · Inactiva{% endif %}</p>
+    </div>
+    <div class="actions">
+        {% if puede_registrar_mantenimiento and unidad.activo and unidad.maquinaria.activo %}
+        {% if unidad.estado == 'Disponible' or unidad.estado == 'Mantenimiento' %}
+        <a class="button" href="{% url 'mantenimiento_registrar' %}?unidad={{ unidad.pk }}">Registrar mantenimiento</a>
+        {% endif %}
+        {% endif %}
+        <a class="button button-secondary" href="{% url 'mantenimiento_lista' %}">Volver a unidades</a>
+    </div>
+</header>
+{% if mantenimientos %}
+<div class="table-wrap card">
+    <table>
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Costo</th><th>Técnico responsable</th></tr></thead>
+        <tbody>
+            {% for mantenimiento in mantenimientos %}
+            <tr>
+                <td>{{ mantenimiento.fecha|date:"d/m/Y" }}</td>
+                <td>{{ mantenimiento.get_tipo_display }}</td>
+                <td class="maintenance-description">{{ mantenimiento.descripcion|default:"No especificada (registro anterior)" }}</td>
+                <td>{{ mantenimiento.costo|floatformat:2 }}</td>
+                <td>{% if mantenimiento.tecnico %}{{ mantenimiento.tecnico.get_full_name|default:mantenimiento.tecnico.username }}<small>{{ mantenimiento.tecnico.username }}</small>{% else %}No registrado (registro anterior){% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<section class="card empty-state"><h2>Sin mantenimientos registrados</h2><p>Esta unidad todavía no tiene actividades de mantenimiento en su historial.</p></section>
+{% endif %}
+{% endblock %}

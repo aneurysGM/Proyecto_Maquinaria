@@ -83,7 +83,7 @@ h2 { font-size: 1.25rem; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .field { display: flex; flex-direction: column; gap: .4rem; }
 .field label { font-weight: 600; }
-.field input, .field select {
+.field input, .field select, .field textarea {
     width: 100%;
     min-height: 42px;
     padding: .55rem .7rem;
@@ -93,7 +93,9 @@ h2 { font-size: 1.25rem; }
     background: #fff;
     font: inherit;
 }
-.field input:focus, .field select:focus { outline: 3px solid #aad7ef; border-color: #145a86; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: 3px solid #aad7ef; border-color: #145a86; }
+.field textarea { resize: vertical; }
+.maintenance-description { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 200px; }
 .field small { color: #526879; line-height: 1.4; }
 .field-errors, .field-error { color: #a52323; font-size: .9rem; }
 .field-error { display: block; }
