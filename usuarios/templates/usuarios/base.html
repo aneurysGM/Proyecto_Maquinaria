@@ -19,6 +19,9 @@
             {% if puede_consultar_operadores %}
             <a href="{% url 'operador_lista' %}">Operadores</a>
             {% endif %}
+            {% if puede_consultar_mantenimientos %}
+            <a href="{% url 'mantenimiento_lista' %}">Mantenimientos</a>
+            {% endif %}
             <form method="post" action="{% url 'logout' %}">
                 {% csrf_token %}
                 <button class="link-button" type="submit">Cerrar sesión</button>

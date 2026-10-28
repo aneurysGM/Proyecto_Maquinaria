@@ -2,6 +2,11 @@
 
 Fecha de validación: 20 de octubre de 2026.
 
+Este documento conserva la validación inicial. Actualización del 27 de octubre
+de 2026: maquinaria, operadores y registro/historial de mantenimiento ya están
+implementados en Django. Consultar README y `hu07-mantenimiento.md` para la
+migración 0007 y las 69 pruebas actuales.
+
 ## Comprobado en este equipo
 
 - SQL Server 2025 Express `17.0.1000.7`, instancia
@@ -35,6 +40,6 @@ Fecha de validación: 20 de octubre de 2026.
   base temporal de pruebas.
 
 No quedan comprobaciones de SQL Server pendientes en este entorno. Los módulos
-de alquiler, pagos, mantenimiento y reportes todavía no están implementados en
+de alquiler, pagos y reportes todavía no están implementados en
 Django; sus objetos SQL corregidos se conservan como base para historias de
 usuario futuras.

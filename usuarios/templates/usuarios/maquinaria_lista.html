@@ -57,7 +57,7 @@
                         <td>{{ maquinaria.nombre }}{% if maquinaria.marca %}<small>{{ maquinaria.marca }} {{ maquinaria.modelo }}</small>{% endif %}</td>
                         <td>{{ maquinaria.categoria }}</td>
                         <td>{{ maquinaria.numero_serie }}</td>
-                        <td><span class="status">{{ maquinaria.estado }}</span></td>
+                        <td><span class="status">{{ maquinaria.get_estado_display }}</span></td>
                         <td>{{ maquinaria.ubicacion_actual|default:"No especificada" }}</td>
                         <td class="maquinaria-acciones"><a href="{% url 'maquinaria_detalle' maquinaria_id=maquinaria.id %}">Ver detalles</a>
                             {% if puede_editar_maquinaria %}

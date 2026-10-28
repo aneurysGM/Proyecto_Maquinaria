@@ -1,0 +1,37 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Registrar mantenimiento{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <div>
+        <p class="eyebrow">HU-07 · Sprint 3</p>
+        <h1>Registrar mantenimiento</h1>
+        <p>Completa todos los campos y comprueba el número de serie de la unidad.</p>
+    </div>
+</header>
+<div class="notice" role="note">
+    La unidad quedará en estado <strong>En mantenimiento</strong> al guardar.
+    Puedes añadir actividades a una unidad que ya esté en mantenimiento.
+</div>
+<form class="card form-card" method="post" novalidate>
+    {% csrf_token %}
+    <p><strong>Técnico responsable:</strong> {{ nombre_usuario }} ({{ request.user.username }}).
+        Se obtiene de tu sesión.</p>
+    {% if form.non_field_errors %}
+    <div class="field-errors" role="alert">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="form-grid">
+        {% for field in form %}
+        <div class="field">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+            {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    <div class="actions">
+        <button class="button" type="submit">Guardar mantenimiento</button>
+        <a class="button button-secondary" href="{% url 'mantenimiento_lista' %}">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

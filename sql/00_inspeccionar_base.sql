@@ -20,6 +20,6 @@ FROM sys.tables AS t
 JOIN sys.columns AS c ON c.object_id = t.object_id
 JOIN sys.types AS ty ON ty.user_type_id = c.user_type_id
 WHERE t.name IN ('Categoria', 'Maquinaria', 'Unidad', 'Parametro',
-                 'AlquilerDetalle', 'auth_user', 'django_migrations')
+                 'AlquilerDetalle', 'Mantenimiento', 'auth_user', 'django_migrations')
 ORDER BY t.name, c.column_id;
 GO

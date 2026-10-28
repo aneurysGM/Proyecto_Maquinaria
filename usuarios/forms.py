@@ -1,9 +1,11 @@
 from django import forms
 from django.core.validators import MaxValueValidator
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Categoria, Maquinaria, Operador, Unidad
+from .models import Categoria, Mantenimiento, Maquinaria, Operador, Unidad
+from .roles import permisos_panel
 from .validators import anio_actual, normalizar_cedula, validar_cedula
 
 
@@ -200,6 +202,55 @@ class MaquinariaEdicionForm(MaquinariaForm):
             unidad, {campo: datos[campo] for campo in self.CAMPOS_UNIDAD}, fecha
         )
         return unidad
+
+
+class UnidadMantenimientoChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, unidad):
+        return (
+            f'{unidad.codigo} · {unidad.nombre} · Serie: {unidad.numero_serie} '
+            f'· Unidad #{unidad.pk} · {unidad.get_estado_display()}'
+        )
+
+
+class MantenimientoForm(forms.Form):
+    unidad = UnidadMantenimientoChoiceField(
+        label='Maquinaria / unidad física', queryset=Unidad.objects.none(),
+        help_text='Selecciona la serie de la unidad disponible o en mantenimiento.',
+    )
+    fecha = forms.DateField(
+        label='Fecha', input_formats=('%Y-%m-%d',),
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+    )
+    tipo = forms.ChoiceField(label='Tipo de mantenimiento', choices=Mantenimiento.TIPOS)
+    descripcion = forms.CharField(
+        label='Descripción', max_length=300, strip=True, widget=forms.Textarea(attrs={'rows': 4}),
+    )
+    costo = forms.DecimalField(label='Costo', max_digits=18, decimal_places=2, min_value=0)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['unidad'].queryset = Unidad.objects.select_related('maquinaria').filter(
+            activo=True, maquinaria__activo=True, estado__in=('Disponible', 'Mantenimiento'),
+        )
+
+    @transaction.atomic
+    def save(self, *, tecnico):
+        if not permisos_panel(tecnico)['puede_registrar_mantenimiento']:
+            raise PermissionDenied
+        datos = self.cleaned_data
+        # Releer y bloquear evita sobrescribir un estado cambiado después de validar.
+        unidad = Unidad.objects.select_for_update().select_related('maquinaria').filter(pk=datos['unidad'].pk).first()
+        if unidad is None or not unidad.activo or not unidad.maquinaria.activo or unidad.estado not in ('Disponible', 'Mantenimiento'):
+            raise ValidationError('La unidad ya no está disponible para registrar mantenimiento. Selecciona otra unidad.')
+        mantenimiento = Mantenimiento(
+            unidad=unidad, tecnico=tecnico,
+            **{campo: datos[campo] for campo in ('fecha', 'tipo', 'descripcion', 'costo')},
+        )
+        mantenimiento.full_clean()
+        mantenimiento.save()
+        unidad.estado = 'Mantenimiento'
+        unidad.save(update_fields=['estado'])
+        return mantenimiento
 
 
 class OperadorForm(forms.Form):
