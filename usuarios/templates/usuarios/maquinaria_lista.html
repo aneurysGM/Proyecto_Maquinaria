@@ -1,0 +1,384 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Consultar maquinaria{% endblock %}
+
+{% block content %}
+{# Si tu base.html ya carga Bootstrap 5, puedes borrar estas líneas #}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+
+<style>
+    .mq-wrap {
+        --mq-ink: #1f2a33;
+        --mq-steel: #5b6b77;
+        --mq-concrete: #eef0f1;
+        --mq-line: #d9dee2;
+        --mq-amber: #f2b705;
+        --mq-amber-dark: #c99700;
+        --mq-radius: 14px;
+        font-family: 'Barlow', system-ui, sans-serif;
+        color: var(--mq-ink);
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem 4rem;
+    }
+    .mq-wrap h1, .mq-wrap h2 {
+        font-family: 'Barlow Semi Condensed', 'Barlow', sans-serif;
+        font-weight: 700;
+        letter-spacing: -.01em;
+    }
+
+    /* Encabezado */
+    .mq-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+    .mq-head h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); margin: 0 0 .25rem; }
+    .mq-head p { color: var(--mq-steel); font-size: 1.05rem; margin: 0; }
+
+    /* Botones */
+    .mq-btn-primary {
+        background: var(--mq-amber);
+        border: 0;
+        color: var(--mq-ink);
+        font-weight: 700;
+        padding: .65rem 1.4rem;
+        border-radius: 10px;
+    }
+    .mq-btn-primary:hover, .mq-btn-primary:focus { background: var(--mq-amber-dark); color: var(--mq-ink); }
+    .mq-btn-secondary {
+        border: 1px solid #c5ccd2;
+        background: #fff;
+        color: var(--mq-ink);
+        font-weight: 600;
+        padding: .65rem 1.2rem;
+        border-radius: 10px;
+    }
+    .mq-btn-secondary:hover { background: var(--mq-concrete); color: var(--mq-ink); }
+
+    /* Filtros */
+    .mq-filters {
+        background: #fff;
+        border: 1px solid var(--mq-line);
+        border-radius: var(--mq-radius);
+        padding: 1.1rem 1.2rem;
+        margin-bottom: 1rem;
+    }
+    .mq-wrap .form-label { font-weight: 600; font-size: .9rem; margin-bottom: .35rem; }
+    .mq-wrap .form-control,
+    .mq-wrap .form-select,
+    .mq-wrap .input-group-text {
+        border-color: #c5ccd2;
+        padding: .6rem .8rem;
+        min-height: 46px;
+    }
+    .mq-wrap .input-group-text { background: var(--mq-concrete); color: var(--mq-steel); }
+    .mq-wrap .form-control:focus,
+    .mq-wrap .form-select:focus {
+        border-color: var(--mq-amber-dark);
+        box-shadow: 0 0 0 .25rem rgba(242, 183, 5, .28);
+    }
+
+    /* Resumen de resultados */
+    .mq-summary {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .5rem;
+        margin-bottom: .75rem;
+        color: var(--mq-steel);
+        font-weight: 500;
+    }
+    .mq-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        background: var(--mq-concrete);
+        border-radius: 999px;
+        padding: .2rem .7rem;
+        font-size: .88rem;
+        color: var(--mq-ink);
+    }
+
+    /* Tabla */
+    .mq-table-card {
+        background: #fff;
+        border: 1px solid var(--mq-line);
+        border-radius: var(--mq-radius);
+        overflow: hidden;
+    }
+    .mq-table { margin: 0; }
+    .mq-table thead th {
+        background: var(--mq-ink);
+        color: #fff;
+        font-weight: 600;
+        font-size: .88rem;
+        border: 0;
+        padding: .85rem 1rem;
+        white-space: nowrap;
+    }
+    .mq-table tbody td {
+        padding: .95rem 1rem;
+        vertical-align: middle;
+        border-color: var(--mq-line);
+    }
+    .mq-table tbody tr { cursor: pointer; transition: background .15s; }
+    .mq-table tbody tr:hover { background: #fffbea; }
+    .mq-code {
+        font-weight: 700;
+        background: var(--mq-concrete);
+        border-radius: 6px;
+        padding: .15rem .5rem;
+        font-size: .9rem;
+        white-space: nowrap;
+    }
+    .mq-name { font-weight: 600; display: block; }
+    .mq-sub { color: var(--mq-steel); font-size: .85rem; }
+    .mq-serial { font-variant-numeric: tabular-nums; color: var(--mq-steel); }
+    .mq-place { display: inline-flex; align-items: center; gap: .35rem; }
+    .mq-place.is-empty { color: #8a96a0; font-style: italic; }
+    .mq-link {
+        color: var(--mq-ink);
+        font-weight: 600;
+        text-decoration: none;
+        border-bottom: 2px solid var(--mq-amber);
+        white-space: nowrap;
+    }
+    .mq-link:hover { color: var(--mq-ink); background: rgba(242, 183, 5, .25); }
+
+    /* Estados (el color lo asigna el JS según el texto) */
+    .mq-status {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        border-radius: 999px;
+        padding: .25rem .75rem;
+        font-size: .85rem;
+        font-weight: 600;
+        background: var(--mq-concrete);
+        color: var(--mq-ink);
+    }
+    .mq-status::before {
+        content: '';
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+    .mq-status.is-ok      { background: #e3f4e8; color: #1e7a3c; }
+    .mq-status.is-busy    { background: #e3eefb; color: #1d5fa8; }
+    .mq-status.is-warn    { background: #fff3cd; color: #8a6400; }
+    .mq-status.is-danger  { background: #fde4e1; color: #b3261e; }
+
+    /* Estado vacío */
+    .mq-empty {
+        background: #fff;
+        border: 1px dashed #b9c2c9;
+        border-radius: var(--mq-radius);
+        text-align: center;
+        padding: 3.5rem 1.5rem;
+    }
+    .mq-empty .mq-empty-icon {
+        width: 64px; height: 64px;
+        margin: 0 auto 1rem;
+        display: grid; place-items: center;
+        border-radius: 16px;
+        background: var(--mq-ink);
+        color: var(--mq-amber);
+        font-size: 1.9rem;
+    }
+    .mq-empty h2 { font-size: 1.5rem; margin-bottom: .35rem; }
+    .mq-empty p { color: var(--mq-steel); margin-bottom: 1.25rem; }
+
+    /* Móvil: cada fila se convierte en una tarjeta */
+    @media (max-width: 767.98px) {
+        .mq-table thead { display: none; }
+        .mq-table, .mq-table tbody, .mq-table tr, .mq-table td { display: block; width: 100%; }
+        .mq-table tbody tr {
+            padding: .9rem 1rem;
+            border-bottom: 1px solid var(--mq-line);
+        }
+        .mq-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: .3rem 0;
+            border: 0;
+            text-align: right;
+        }
+        .mq-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: var(--mq-steel);
+            text-align: left;
+            flex-shrink: 0;
+        }
+        .mq-table tbody td[data-label=""]::before { display: none; }
+        .mq-table tbody td.mq-cell-actions { justify-content: flex-end; padding-top: .6rem; }
+    }
+</style>
+
+<div class="mq-wrap">
+
+    <header class="mq-head">
+        <div>
+            <h1>Consultar maquinaria</h1>
+            <p>Busca por código, nombre, categoría o número de serie.</p>
+        </div>
+        {% if puede_registrar_maquinaria %}
+            <a class="btn mq-btn-primary" href="{% url 'maquinaria_registrar' %}">
+                <i class="bi bi-plus-lg me-1"></i>Registrar maquinaria
+            </a>
+        {% endif %}
+    </header>
+
+    {# ---------- Filtros ---------- #}
+    <form class="mq-filters" id="mqFilters" method="get">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-6">
+                <label for="id_q" class="form-label">Buscar</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input id="id_q" name="q" type="search" class="form-control"
+                           value="{{ consulta }}" placeholder="Código, nombre, categoría o serie"
+                           autocomplete="off">
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <label for="id_estado" class="form-label">Estado</label>
+                <select id="id_estado" name="estado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    {% for valor, etiqueta in estados %}
+                        <option value="{{ valor }}" {% if estado_seleccionado == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2">
+                <button class="btn mq-btn-primary flex-grow-1" type="submit">
+                    <i class="bi bi-search me-1"></i>Buscar
+                </button>
+                <a class="btn mq-btn-secondary" href="{% url 'maquinaria_lista' %}" title="Limpiar filtros">
+                    <i class="bi bi-x-lg"></i><span class="visually-hidden">Limpiar</span>
+                </a>
+            </div>
+        </div>
+    </form>
+
+    {% if maquinarias %}
+        {# ---------- Resumen ---------- #}
+        <div class="mq-summary" aria-live="polite">
+            <span><strong>{{ maquinarias|length }}</strong> {% if maquinarias|length == 1 %}resultado{% else %}resultados{% endif %}</span>
+            {% if consulta %}<span class="mq-chip"><i class="bi bi-search"></i>"{{ consulta }}"</span>{% endif %}
+            {% if estado_seleccionado %}<span class="mq-chip"><i class="bi bi-funnel"></i>{{ estado_seleccionado }}</span>{% endif %}
+        </div>
+
+        {# ---------- Tabla ---------- #}
+        <div class="mq-table-card">
+            <div class="table-responsive">
+                <table class="table mq-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Código</th>
+                            <th scope="col">Maquinaria</th>
+                            <th scope="col">Categoría</th>
+                            <th scope="col">Número de serie</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Ubicación actual</th>
+                            <th scope="col"><span class="visually-hidden">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for maquinaria in maquinarias %}
+                            <tr data-href="{% url 'maquinaria_detalle' maquinaria_id=maquinaria.id %}">
+                                <td data-label="Código"><span class="mq-code">{{ maquinaria.codigo }}</span></td>
+                                <td data-label="Maquinaria">
+                                    <span>
+                                        <span class="mq-name">{{ maquinaria.nombre }}</span>
+                                        {% if maquinaria.marca %}<span class="mq-sub">{{ maquinaria.marca }} {{ maquinaria.modelo }}</span>{% endif %}
+                                    </span>
+                                </td>
+                                <td data-label="Categoría">{{ maquinaria.categoria }}</td>
+                                <td data-label="Número de serie" class="mq-serial">{{ maquinaria.numero_serie }}</td>
+                                <td data-label="Estado"><span class="mq-status">{{ maquinaria.estado }}</span></td>
+                                <td data-label="Ubicación">
+                                    {% if maquinaria.ubicacion_actual %}
+                                        <span class="mq-place"><i class="bi bi-geo-alt"></i>{{ maquinaria.ubicacion_actual }}</span>
+                                    {% else %}
+                                        <span class="mq-place is-empty">No especificada</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="" class="mq-cell-actions text-end">
+                                    <a class="mq-link" href="{% url 'maquinaria_detalle' maquinaria_id=maquinaria.id %}">Ver detalles</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        {# ---------- Estado vacío ---------- #}
+        <section class="mq-empty">
+            <div class="mq-empty-icon"><i class="bi bi-truck-flatbed"></i></div>
+            <h2>No se encontró maquinaria</h2>
+            <p>{% if consulta or estado_seleccionado %}Prueba con otro término o limpia los filtros.{% else %}Todavía no hay registros.{% endif %}</p>
+            {% if consulta or estado_seleccionado %}
+                <a class="btn mq-btn-secondary" href="{% url 'maquinaria_lista' %}">Limpiar filtros</a>
+            {% elif puede_registrar_maquinaria %}
+                <a class="btn mq-btn-primary" href="{% url 'maquinaria_registrar' %}">
+                    <i class="bi bi-plus-lg me-1"></i>Registrar maquinaria
+                </a>
+            {% endif %}
+        </section>
+    {% endif %}
+</div>
+
+<script>
+(function () {
+    // 1) Color del estado según su texto (sin acentos, en minúsculas)
+    function normalize(s) {
+        return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    }
+    var RULES = [
+        { cls: 'is-danger', words: ['fuera', 'baja', 'danad', 'averi', 'inactiv', 'retirad'] },
+        { cls: 'is-warn',   words: ['mantenimiento', 'reparacion', 'taller', 'revision'] },
+        { cls: 'is-busy',   words: ['alquilad', 'rentad', 'asignad', 'en uso', 'en obra', 'reservad'] },
+        { cls: 'is-ok',     words: ['disponible', 'activ', 'operativ', 'libre'] }
+    ];
+    document.querySelectorAll('.mq-status').forEach(function (el) {
+        var text = normalize(el.textContent.trim());
+        for (var i = 0; i < RULES.length; i++) {
+            if (RULES[i].words.some(function (w) { return text.indexOf(w) !== -1; })) {
+                el.classList.add(RULES[i].cls);
+                break;
+            }
+        }
+    });
+
+    // 2) Toda la fila lleva al detalle (el enlace sigue funcionando por teclado)
+    document.querySelectorAll('.mq-table tbody tr[data-href]').forEach(function (row) {
+        row.addEventListener('click', function (e) {
+            if (e.target.closest('a, button')) return;
+            window.location.href = row.dataset.href;
+        });
+    });
+
+    // 3) Filtrar apenas se cambia el estado
+    var estado = document.getElementById('id_estado');
+    var form = document.getElementById('mqFilters');
+    if (estado && form) {
+        estado.addEventListener('change', function () { form.submit(); });
+    }
+
+    // 4) Dejar el cursor al final del texto buscado
+    var q = document.getElementById('id_q');
+    if (q && q.value) {
+        q.focus({ preventScroll: true });
+        q.setSelectionRange(q.value.length, q.value.length);
+    }
+})();
+</script>
+{% endblock %}

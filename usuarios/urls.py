@@ -18,7 +18,7 @@ urlpatterns = [
     path(
         "maquinaria/registrar/",
         views.maquinaria_registrar,
-        name="maquinaria_registrar",
+        name='maquinaria_registrar',
     ),
     path(
         "maquinaria/<int:maquinaria_id>/",

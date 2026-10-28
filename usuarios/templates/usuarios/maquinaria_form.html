@@ -1,0 +1,370 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Registrar maquinaria{% endblock %}
+
+{% block content %}
+{# Si tu base.html ya carga Bootstrap 5, puedes borrar estas dos líneas #}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+
+<style>
+    .mq-wrap {
+        --mq-ink: #1f2a33;
+        --mq-steel: #5b6b77;
+        --mq-concrete: #eef0f1;
+        --mq-line: #d9dee2;
+        --mq-amber: #f2b705;
+        --mq-amber-dark: #c99700;
+        --mq-radius: 14px;
+        font-family: 'Barlow', system-ui, sans-serif;
+        color: var(--mq-ink);
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 2rem 1rem 6rem;
+    }
+    .mq-wrap h1, .mq-wrap h2 {
+        font-family: 'Barlow Semi Condensed', 'Barlow', sans-serif;
+        font-weight: 700;
+        letter-spacing: -.01em;
+    }
+
+    /* Encabezado */
+    .mq-head { margin-bottom: 1.5rem; }
+    .mq-head h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); margin: 0 0 .25rem; }
+    .mq-head p { color: var(--mq-steel); font-size: 1.05rem; margin: 0; }
+
+    /* Progreso */
+    .mq-progress {
+        background: #fff;
+        border: 1px solid var(--mq-line);
+        border-radius: var(--mq-radius);
+        padding: .9rem 1.1rem;
+        margin-bottom: 1.25rem;
+    }
+    .mq-progress .progress { height: 8px; background: var(--mq-concrete); }
+    .mq-progress .progress-bar { background: var(--mq-amber); transition: width .3s ease; }
+    .mq-progress small { color: var(--mq-steel); font-weight: 500; }
+
+    /* Tarjetas de sección */
+    .mq-card {
+        background: #fff;
+        border: 1px solid var(--mq-line);
+        border-radius: var(--mq-radius);
+        margin-bottom: 1.25rem;
+        overflow: hidden;
+    }
+    .mq-card-head {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        padding: 1.1rem 1.4rem;
+        border-bottom: 1px solid var(--mq-line);
+        border-left: 5px solid var(--mq-amber);
+        background: #fafbfb;
+    }
+    .mq-card-head .mq-icon {
+        width: 42px; height: 42px;
+        display: grid; place-items: center;
+        border-radius: 10px;
+        background: var(--mq-ink);
+        color: var(--mq-amber);
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    .mq-card-head h2 { font-size: 1.3rem; margin: 0; }
+    .mq-card-head p { margin: 0; color: var(--mq-steel); font-size: .92rem; }
+    .mq-card-body { padding: 1.5rem 1.4rem 1.2rem; }
+
+    /* Campos */
+    .mq-wrap .form-label { font-weight: 600; font-size: .92rem; margin-bottom: .35rem; }
+    .mq-wrap .mq-req { color: #c0392b; margin-left: .15rem; }
+    .mq-wrap .form-control,
+    .mq-wrap .form-select,
+    .mq-wrap .input-group-text {
+        border-color: #c5ccd2;
+        padding: .6rem .8rem;
+        min-height: 46px;
+    }
+    .mq-wrap .input-group-text {
+        background: var(--mq-concrete);
+        color: var(--mq-steel);
+        font-weight: 600;
+    }
+    .mq-wrap .form-control:focus,
+    .mq-wrap .form-select:focus {
+        border-color: var(--mq-amber-dark);
+        box-shadow: 0 0 0 .25rem rgba(242, 183, 5, .28);
+    }
+    .mq-wrap .form-text { color: var(--mq-steel); font-size: .82rem; }
+    .mq-wrap .invalid-feedback { font-size: .85rem; }
+
+    /* Barra de acciones */
+    .mq-actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        display: flex;
+        gap: .75rem;
+        justify-content: flex-end;
+        padding: .9rem 1rem;
+        margin: 0 -1rem;
+        background: rgba(255, 255, 255, .92);
+        backdrop-filter: blur(6px);
+        border-top: 1px solid var(--mq-line);
+    }
+    .mq-btn-primary {
+        background: var(--mq-amber);
+        border: 0;
+        color: var(--mq-ink);
+        font-weight: 700;
+        padding: .65rem 1.6rem;
+        border-radius: 10px;
+    }
+    .mq-btn-primary:hover, .mq-btn-primary:focus { background: var(--mq-amber-dark); color: var(--mq-ink); }
+    .mq-btn-secondary {
+        border: 1px solid #c5ccd2;
+        background: #fff;
+        color: var(--mq-ink);
+        font-weight: 600;
+        padding: .65rem 1.3rem;
+        border-radius: 10px;
+    }
+    .mq-btn-secondary:hover { background: var(--mq-concrete); color: var(--mq-ink); }
+
+    @media (max-width: 575.98px) {
+        .mq-actions { flex-direction: column-reverse; }
+        .mq-actions .btn { width: 100%; }
+    }
+</style>
+
+<div class="mq-wrap">
+
+    <header class="mq-head">
+        <h1>Registrar maquinaria</h1>
+        <p>Completa los datos del catálogo y de la unidad física.</p>
+    </header>
+
+    <div class="mq-progress" aria-live="polite">
+        <div class="d-flex justify-content-between mb-2">
+            <small>Avance del formulario</small>
+            <small id="mqProgressText">0 de 0 campos</small>
+        </div>
+        <div class="progress" role="progressbar" aria-label="Avance del formulario">
+            <div class="progress-bar" id="mqProgressBar" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <form id="mqForm" method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger d-flex gap-2 align-items-start" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <div>{{ form.non_field_errors }}</div>
+            </div>
+        {% endif %}
+
+        {# ---------- Datos de catálogo ---------- #}
+        <section class="mq-card">
+            <div class="mq-card-head">
+                <span class="mq-icon"><i class="bi bi-journal-text"></i></span>
+                <div>
+                    <h2>Datos de catálogo</h2>
+                    <p>Identificación del equipo y sus tarifas de alquiler.</p>
+                </div>
+            </div>
+            <div class="mq-card-body">
+                <div class="row g-3">
+                    {% for field in form %}
+                        {% if field.name in 'codigo nombre categoria marca modelo costo_adquisicion tarifa_diaria tarifa_semanal tarifa_mensual deposito_garantia' %}
+                            <div class="col-12 col-md-6 mq-field" data-name="{{ field.name }}">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}{% if field.field.required %}<span class="mq-req" aria-hidden="true">*</span>{% endif %}
+                                </label>
+                                {{ field }}
+                                {% for error in field.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        {# ---------- Datos de la unidad física ---------- #}
+        <section class="mq-card">
+            <div class="mq-card-head">
+                <span class="mq-icon"><i class="bi bi-truck-flatbed"></i></span>
+                <div>
+                    <h2>Datos de la unidad física</h2>
+                    <p>Estado, uso y ubicación de la máquina que vas a registrar.</p>
+                </div>
+            </div>
+            <div class="mq-card-body">
+                <div class="row g-3">
+                    {% for field in form %}
+                        {% if field.name in 'numero_serie estado horas_uso fecha_adquisicion anio_fabricacion ubicacion_actual' %}
+                            <div class="col-12 col-md-6 mq-field" data-name="{{ field.name }}">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}{% if field.field.required %}<span class="mq-req" aria-hidden="true">*</span>{% endif %}
+                                </label>
+                                {{ field }}
+                                {% for error in field.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <div class="mq-actions">
+            <a class="btn mq-btn-secondary" href="{% url 'maquinaria_lista' %}">Cancelar</a>
+            <button class="btn mq-btn-primary" type="submit" id="mqSubmit">
+                <span class="mq-submit-label"><i class="bi bi-check2-circle me-1"></i>Guardar maquinaria</span>
+                <span class="mq-submit-loading d-none">
+                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Guardando…
+                </span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function () {
+    const form = document.getElementById('mqForm');
+    if (!form) return;
+
+    const MONEY = ['costo_adquisicion', 'tarifa_diaria', 'tarifa_semanal', 'tarifa_mensual', 'deposito_garantia'];
+    const SUFFIX = { horas_uso: 'horas' };
+    const CURRENCY = 'RD$';  // cambia aquí la moneda si hace falta
+
+    const fields = Array.from(form.querySelectorAll('.mq-field'));
+
+    // 1) Aplicar clases de Bootstrap a los widgets que genera Django
+    fields.forEach(function (wrap) {
+        const control = wrap.querySelector('input, select, textarea');
+        if (!control) return;
+
+        if (control.type === 'checkbox' || control.type === 'radio') {
+            control.classList.add('form-check-input');
+        } else if (control.tagName === 'SELECT') {
+            control.classList.add('form-select');
+        } else {
+            control.classList.add('form-control');
+        }
+
+        // Errores devueltos por el servidor
+        if (wrap.querySelector('.invalid-feedback')) {
+            control.classList.add('is-invalid');
+        }
+
+        // 2) Prefijos / sufijos (moneda, horas)
+        const name = wrap.dataset.name;
+        const isMoney = MONEY.indexOf(name) !== -1;
+        const suffix = SUFFIX[name];
+        if (isMoney || suffix) {
+            const group = document.createElement('div');
+            group.className = 'input-group';
+            control.parentNode.insertBefore(group, control);
+            if (isMoney) {
+                const pre = document.createElement('span');
+                pre.className = 'input-group-text';
+                pre.textContent = CURRENCY;
+                group.appendChild(pre);
+                control.setAttribute('inputmode', 'decimal');
+            }
+            group.appendChild(control);
+            if (suffix) {
+                const post = document.createElement('span');
+                post.className = 'input-group-text';
+                post.textContent = suffix;
+                group.appendChild(post);
+            }
+        }
+
+        // Al escribir, quitar el error del servidor de ese campo
+        control.addEventListener('input', function () {
+            control.classList.remove('is-invalid');
+            const fb = wrap.querySelector('.invalid-feedback.d-block');
+            if (fb && fb.dataset.server) fb.remove();
+        });
+    });
+
+    // Marcar los mensajes del servidor para poder limpiarlos al editar
+    form.querySelectorAll('.invalid-feedback.d-block').forEach(function (el) {
+        el.dataset.server = '1';
+    });
+
+    // 3) Barra de progreso (solo cuenta campos obligatorios)
+    const required = fields
+        .map(function (w) { return w.querySelector('input, select, textarea'); })
+        .filter(function (c) { return c && c.required; });
+    const bar = document.getElementById('mqProgressBar');
+    const text = document.getElementById('mqProgressText');
+
+    function updateProgress() {
+        const total = required.length || 1;
+        const done = required.filter(function (c) { return c.value.trim() !== ''; }).length;
+        const pct = Math.round((done / total) * 100);
+        bar.style.width = pct + '%';
+        text.textContent = done + ' de ' + required.length + ' campos obligatorios';
+    }
+    form.addEventListener('input', updateProgress);
+    form.addEventListener('change', updateProgress);
+    updateProgress();
+
+    // 4) Validación en el navegador + estado de "guardando"
+    form.addEventListener('submit', function (e) {
+        // Quitar mensajes del servidor antes de revalidar
+        form.querySelectorAll('.invalid-feedback[data-server]').forEach(function (el) { el.remove(); });
+
+        let firstInvalid = null;
+        fields.forEach(function (wrap) {
+            const c = wrap.querySelector('input, select, textarea');
+            if (!c) return;
+            const ok = c.checkValidity();
+            c.classList.toggle('is-invalid', !ok);
+            // Mensaje del navegador debajo del campo
+            let msg = wrap.querySelector('.invalid-feedback:not(.d-block)');
+            if (!ok) {
+                if (!msg) {
+                    msg = document.createElement('div');
+                    msg.className = 'invalid-feedback';
+                    (c.closest('.input-group') || c).insertAdjacentElement('afterend', msg);
+                }
+                msg.style.display = 'block';
+                msg.textContent = c.validationMessage;
+                if (!firstInvalid) firstInvalid = c;
+            } else if (msg) {
+                msg.remove();
+            }
+        });
+
+        if (firstInvalid) {
+            e.preventDefault();
+            firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstInvalid.focus({ preventScroll: true });
+            return;
+        }
+
+        const btn = document.getElementById('mqSubmit');
+        btn.disabled = true;
+        btn.querySelector('.mq-submit-label').classList.add('d-none');
+        btn.querySelector('.mq-submit-loading').classList.remove('d-none');
+    });
+
+    // Si el servidor devolvió errores, llevar al primero
+    const firstServerError = form.querySelector('.is-invalid');
+    if (firstServerError) {
+        firstServerError.scrollIntoView({ block: 'center' });
+        firstServerError.focus({ preventScroll: true });
+    }
+})();
+</script>
+{% endblock %}

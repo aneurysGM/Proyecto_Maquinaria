@@ -1,4 +1,3 @@
-
 {% load static %}
 <!DOCTYPE html>
 <html lang="es">
@@ -6,113 +5,339 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>{% block title %}Sistema de alquiler de equipos{% endblock %}</title>
+    <title>{% block title %}Sistema de alquiler de equipos{% endblock %} · MaquiRent</title>
 
+    {# CSS antiguo: lo dejo para que las pantallas que aún no rediseñamos (p. ej. el dashboard) no se rompan. Bórralo cuando todas estén migradas. #}
     <link rel="stylesheet" href="{% static 'usuarios/css/maquinaria.css' %}">
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    {# Font Awesome: solo por compatibilidad con pantallas antiguas. Bórralo cuando ya no uses "fa-solid" en ningún lado. #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --mq-ink: #1f2a33;
+            --mq-ink-2: #28343d;
+            --mq-steel: #5b6b77;
+            --mq-concrete: #eef0f1;
+            --mq-line: #d9dee2;
+            --mq-amber: #f2b705;
+            --mq-amber-dark: #c99700;
+            --mq-radius: 14px;
+            --mq-sidebar-w: 272px;
+            --mq-topbar-h: 64px;
+        }
+
+        body {
+            font-family: 'Barlow', system-ui, sans-serif;
+            color: var(--mq-ink);
+            background: var(--mq-concrete);
+            margin: 0;
+            display: block;
+        }
+        body.mq-lock { overflow: hidden; }
+        :focus-visible { outline: 3px solid var(--mq-amber-dark); outline-offset: 2px; }
+
+        /* ---------- Estructura ---------- */
+        .mq-app { min-height: 100vh; }
+
+        .mq-sidebar {
+            position: fixed;
+            top: 0; bottom: 0; left: 0;
+            width: var(--mq-sidebar-w);
+            background: var(--mq-ink);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            z-index: 1040;
+            transition: transform .25s ease;
+        }
+        .mq-sidebar::before {
+            content: '';
+            height: 8px;
+            flex-shrink: 0;
+            background: repeating-linear-gradient(-45deg, var(--mq-amber) 0 12px, var(--mq-ink) 12px 24px);
+        }
+
+        .mq-main-wrap {
+            margin-left: var(--mq-sidebar-w);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* ---------- Marca ---------- */
+        .mq-brand {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            padding: 1.25rem 1.25rem 1.1rem;
+            text-decoration: none;
+            color: #fff;
+        }
+        .mq-brand:hover { color: #fff; }
+        .mq-brand-mark {
+            width: 42px; height: 42px;
+            display: grid; place-items: center;
+            border-radius: 11px;
+            background: var(--mq-amber);
+            color: var(--mq-ink);
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+        .mq-brand-text strong {
+            display: block;
+            font-family: 'Barlow Semi Condensed', sans-serif;
+            font-size: 1.45rem;
+            line-height: 1.05;
+            letter-spacing: -.01em;
+        }
+        .mq-brand-text span { display: block; font-size: .8rem; color: #93a1ab; line-height: 1.2; }
+
+        /* ---------- Navegación ---------- */
+        .mq-nav { flex: 1; overflow-y: auto; padding: .5rem .85rem 1rem; }
+        .mq-nav-link {
+            display: flex;
+            align-items: center;
+            gap: .8rem;
+            padding: .7rem .85rem;
+            margin-bottom: .2rem;
+            border-radius: 10px;
+            color: #c9d3da;
+            text-decoration: none;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            transition: background .15s, color .15s;
+        }
+        .mq-nav-link i { font-size: 1.15rem; width: 1.4rem; text-align: center; }
+        .mq-nav-link:hover { background: var(--mq-ink-2); color: #fff; }
+        .mq-nav-link.active {
+            background: var(--mq-ink-2);
+            color: #fff;
+            border-left-color: var(--mq-amber);
+            font-weight: 600;
+        }
+        .mq-nav-link.active i { color: var(--mq-amber); }
+
+        .mq-nav-group {
+            margin: 1.2rem .85rem .5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--mq-ink-2);
+            font-size: .85rem;
+            color: #7d8b95;
+        }
+        .mq-nav-link.is-disabled { color: #6f7d87; cursor: not-allowed; }
+        .mq-nav-link.is-disabled:hover { background: transparent; color: #6f7d87; }
+        .mq-soon {
+            margin-left: auto;
+            font-size: .72rem;
+            font-weight: 600;
+            padding: .1rem .5rem;
+            border-radius: 999px;
+            background: var(--mq-ink-2);
+            color: #93a1ab;
+        }
+
+        /* ---------- Usuario (sidebar) ---------- */
+        .mq-sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--mq-ink-2);
+        }
+        .mq-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            display: grid; place-items: center;
+            background: var(--mq-amber);
+            color: var(--mq-ink);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .mq-sidebar-user strong { display: block; font-size: .98rem; line-height: 1.2; }
+        .mq-sidebar-user span { display: block; font-size: .82rem; color: #93a1ab; }
+        .mq-sidebar-user div:last-child { min-width: 0; }
+        .mq-sidebar-user strong, .mq-sidebar-user span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* ---------- Barra superior ---------- */
+        .mq-topbar {
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+            height: var(--mq-topbar-h);
+            background: rgba(255, 255, 255, .94);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--mq-line);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0 1.5rem;
+        }
+        .mq-topbar-left, .mq-topbar-right { display: flex; align-items: center; gap: .9rem; min-width: 0; }
+        .mq-menu-toggle {
+            display: none;
+            width: 42px; height: 42px;
+            border: 1px solid var(--mq-line);
+            border-radius: 10px;
+            background: #fff;
+            color: var(--mq-ink);
+            font-size: 1.25rem;
+            place-items: center;
+        }
+        .mq-menu-toggle:hover { background: var(--mq-concrete); }
+        .mq-crumb { display: flex; align-items: center; gap: .5rem; color: var(--mq-steel); min-width: 0; }
+        .mq-crumb i { font-size: .75rem; }
+        .mq-crumb strong {
+            color: var(--mq-ink);
+            font-weight: 600;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .mq-user-chip {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            color: var(--mq-ink);
+            font-weight: 500;
+        }
+        .mq-user-chip i { font-size: 1.5rem; color: var(--mq-steel); }
+        .mq-logout {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            border: 1px solid #c5ccd2;
+            background: #fff;
+            color: var(--mq-ink);
+            font-weight: 600;
+            padding: .5rem .95rem;
+            border-radius: 10px;
+        }
+        .mq-logout:hover { background: var(--mq-concrete); color: var(--mq-ink); }
+
+        /* ---------- Contenido ---------- */
+        .mq-content { flex: 1; padding: 0 1.25rem; }
+
+        .mq-messages { max-width: 1200px; margin: 1.25rem auto 0; }
+        .mq-messages .alert { border-radius: 12px; display: flex; align-items: center; gap: .6rem; }
+
+        /* ---------- Pie ---------- */
+        .mq-footer {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: .25rem 1.5rem;
+            padding: 1rem 1.5rem;
+            background: #fff;
+            border-top: 1px solid var(--mq-line);
+            color: var(--mq-steel);
+            font-size: .9rem;
+        }
+
+        /* ---------- Fondo al abrir menú en móvil ---------- */
+        .mq-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15, 22, 27, .55);
+            z-index: 1035;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s ease;
+        }
+        .mq-overlay.is-visible { opacity: 1; pointer-events: auto; }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 991.98px) {
+            .mq-sidebar { transform: translateX(-100%); box-shadow: none; }
+            .mq-sidebar.sidebar-open { transform: translateX(0); box-shadow: 0 0 40px rgba(0, 0, 0, .35); }
+            .mq-main-wrap { margin-left: 0; }
+            .mq-menu-toggle { display: grid; }
+            .mq-topbar { padding: 0 1rem; }
+        }
+        @media (max-width: 575.98px) {
+            .mq-user-chip span, .mq-logout span { display: none; }
+            .mq-logout { padding: .5rem .7rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .mq-sidebar, .mq-overlay { transition: none; }
+        }
+    </style>
 
     {% block extra_css %}{% endblock %}
 </head>
 
 <body>
 
-<div class="admin-layout">
+<div class="mq-app">
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar">
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="mq-sidebar" id="sidebar">
 
-        <a class="brand" href="{% url 'dashboard' %}">
-            <div class="brand-icon">
-                <i class="fa-solid fa-truck-ramp-box"></i>
-            </div>
-
-            <div class="brand-text">
-                <h2>MaquiRent</h2>
-                <span>Gestión de Maquinaria Pesada</span>
-            </div>
+        <a class="mq-brand" href="{% url 'dashboard' %}">
+            <span class="mq-brand-mark"><i class="bi bi-truck-flatbed"></i></span>
+            <span class="mq-brand-text">
+                <strong>MaquiRent</strong>
+                <span>Gestión de maquinaria pesada</span>
+            </span>
         </a>
 
-        <nav class="sidebar-nav" aria-label="Menú principal">
+        <nav class="mq-nav" aria-label="Menú principal">
 
             <a href="{% url 'dashboard' %}"
-               class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                <i class="fa-solid fa-house"></i>
+               class="mq-nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+               {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}>
+                <i class="bi bi-house-door"></i>
                 <span>Inicio</span>
             </a>
 
             {% if puede_consultar_maquinaria %}
             <a href="{% url 'maquinaria_lista' %}"
-               class="nav-link {% if request.resolver_match.url_name == 'maquinaria_lista' %}active{% endif %}">
-                <i class="fa-solid fa-truck-monster"></i>
+               class="mq-nav-link {% if request.resolver_match.url_name in 'maquinaria_lista maquinaria_registrar maquinaria_detalle' %}active{% endif %}"
+               {% if request.resolver_match.url_name in 'maquinaria_lista maquinaria_registrar maquinaria_detalle' %}aria-current="page"{% endif %}>
+                <i class="bi bi-gear-wide-connected"></i>
                 <span>Maquinarias</span>
             </a>
             {% endif %}
 
             <!-- Módulos pendientes de implementar -->
-            <a href="#" class="nav-link nav-disabled"
-               aria-disabled="true" title="Próximamente">
-                <i class="fa-solid fa-users"></i>
-                <span>Clientes</span>
-            </a>
+            <div class="mq-nav-group">Próximamente</div>
 
-            <a href="#" class="nav-link nav-disabled"
-               aria-disabled="true" title="Próximamente">
-                <i class="fa-solid fa-file-contract"></i>
-                <span>Alquileres</span>
+            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
+                <i class="bi bi-people"></i><span>Clientes</span><span class="mq-soon">Pronto</span>
             </a>
-
-            <a href="#" class="nav-link nav-disabled"
-               aria-disabled="true" title="Próximamente">
-                <i class="fa-solid fa-file-invoice-dollar"></i>
-                <span>Pagos y Facturación</span>
+            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
+                <i class="bi bi-file-earmark-text"></i><span>Alquileres</span><span class="mq-soon">Pronto</span>
             </a>
-
-            <a href="#" class="nav-link nav-disabled"
-               aria-disabled="true" title="Próximamente">
-                <i class="fa-solid fa-screwdriver-wrench"></i>
-                <span>Mantenimientos</span>
+            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
+                <i class="bi bi-receipt"></i><span>Pagos y facturación</span><span class="mq-soon">Pronto</span>
             </a>
-
-            <a href="#" class="nav-link nav-disabled"
-               aria-disabled="true" title="Próximamente">
-                <i class="fa-solid fa-user-gear"></i>
-                <span>Operadores</span>
+            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
+                <i class="bi bi-tools"></i><span>Mantenimientos</span><span class="mq-soon">Pronto</span>
             </a>
-
-            <a href="#" class="nav-link nav-disabled"
-               aria-disabled="true" title="Próximamente">
-                <i class="fa-solid fa-gears"></i>
-                <span>Repuestos</span>
+            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
+                <i class="bi bi-person-gear"></i><span>Operadores</span><span class="mq-soon">Pronto</span>
             </a>
-
-            <a href="#" class="nav-link nav-disabled"
-               aria-disabled="true" title="Próximamente">
-                <i class="fa-solid fa-folder-open"></i>
-                <span>Documentos</span>
+            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
+                <i class="bi bi-gear"></i><span>Repuestos</span><span class="mq-soon">Pronto</span>
             </a>
-
-            <a href="#" class="nav-link nav-disabled"
-               aria-disabled="true" title="Próximamente">
-                <i class="fa-solid fa-chart-line"></i>
-                <span>Reportes</span>
+            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
+                <i class="bi bi-folder2-open"></i><span>Documentos</span><span class="mq-soon">Pronto</span>
             </a>
-
-            <a href="#" class="nav-link nav-disabled"
-               aria-disabled="true" title="Próximamente">
-                <i class="fa-solid fa-sliders"></i>
-                <span>Configuración</span>
+            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
+                <i class="bi bi-graph-up"></i><span>Reportes</span><span class="mq-soon">Pronto</span>
+            </a>
+            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
+                <i class="bi bi-sliders"></i><span>Configuración</span><span class="mq-soon">Pronto</span>
             </a>
 
         </nav>
 
         <!-- USUARIO -->
-        <div class="sidebar-user">
-            <div class="sidebar-avatar">
-                {{ nombre_usuario|first|upper }}
-            </div>
-
-            <div class="sidebar-user-info">
+        <div class="mq-sidebar-user">
+            <div class="mq-avatar">{{ nombre_usuario|first|upper }}</div>
+            <div>
                 <strong>{{ nombre_usuario }}</strong>
                 <span>{{ rol_usuario }}</span>
             </div>
@@ -120,41 +345,41 @@
 
     </aside>
 
-    <!-- CONTENIDO PRINCIPAL -->
-    <div class="main-wrapper">
+    <div class="mq-overlay" id="sidebarOverlay"></div>
+
+    <!-- ================= CONTENIDO PRINCIPAL ================= -->
+    <div class="mq-main-wrap">
 
         <!-- BARRA SUPERIOR -->
-        <header class="topbar">
+        <header class="mq-topbar">
 
-            <div class="topbar-left">
+            <div class="mq-topbar-left">
                 <button type="button"
-                        class="menu-toggle"
+                        class="mq-menu-toggle"
                         id="sidebarToggle"
                         aria-label="Abrir o cerrar menú"
                         aria-controls="sidebar"
                         aria-expanded="false">
-                    <i class="fa-solid fa-bars"></i>
+                    <i class="bi bi-list"></i>
                 </button>
 
-                <div class="breadcrumb">
+                <div class="mq-crumb">
                     <span>Sistema</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                    <strong>
-                        {% block page_name %}Panel principal{% endblock %}
-                    </strong>
+                    <i class="bi bi-chevron-right"></i>
+                    <strong>{% block page_name %}Panel principal{% endblock %}</strong>
                 </div>
             </div>
 
-            <div class="topbar-right">
-                <div class="topbar-user">
-                    <i class="fa-regular fa-circle-user"></i>
+            <div class="mq-topbar-right">
+                <div class="mq-user-chip">
+                    <i class="bi bi-person-circle"></i>
                     <span>{{ nombre_usuario }}</span>
                 </div>
 
                 <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}
-                    <button class="logout-button" type="submit">
-                        <i class="fa-solid fa-right-from-bracket"></i>
+                    <button class="mq-logout" type="submit">
+                        <i class="bi bi-box-arrow-right"></i>
                         <span>Cerrar sesión</span>
                     </button>
                 </form>
@@ -163,14 +388,16 @@
         </header>
 
         <!-- PÁGINA -->
-        <main class="main-content">
+        <main class="mq-content">
 
             {% if messages %}
-                <div class="messages-container">
+                <div class="mq-messages">
                     {% for message in messages %}
-                        <div class="message message-{{ message.tags }}"
+                        <div class="alert alert-{% if message.level_tag == 'error' %}danger{% else %}{{ message.level_tag|default:'info' }}{% endif %} alert-dismissible fade show"
                              role="status">
-                            {{ message }}
+                            <i class="bi {% if message.level_tag == 'success' %}bi-check-circle-fill{% elif message.level_tag == 'error' %}bi-exclamation-triangle-fill{% elif message.level_tag == 'warning' %}bi-exclamation-circle-fill{% else %}bi-info-circle-fill{% endif %}"></i>
+                            <div>{{ message }}</div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
                     {% endfor %}
                 </div>
@@ -181,48 +408,60 @@
         </main>
 
         <!-- FOOTER -->
-        <footer class="app-footer">
-            <span>
-                © {% now "Y" %} MaquiRent. Todos los derechos reservados.
-            </span>
-
-            <span>Software de Gestión y Alquiler de Maquinaria Pesada</span>
+        <footer class="mq-footer">
+            <span>© {% now "Y" %} MaquiRent. Todos los derechos reservados.</span>
+            <span>Software de gestión y alquiler de maquinaria pesada</span>
         </footer>
 
     </div>
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     (() => {
         const sidebar = document.getElementById('sidebar');
         const toggle = document.getElementById('sidebarToggle');
-
+        const overlay = document.getElementById('sidebarOverlay');
         if (!sidebar || !toggle) return;
 
-        toggle.addEventListener('click', () => {
-            const isOpen = sidebar.classList.toggle('sidebar-open');
+        const BREAKPOINT = 992;
 
-            toggle.setAttribute('aria-expanded', String(isOpen));
-        });
+        function setOpen(open) {
+            sidebar.classList.toggle('sidebar-open', open);
+            overlay.classList.toggle('is-visible', open);
+            document.body.classList.toggle('mq-lock', open && window.innerWidth < BREAKPOINT);
+            toggle.setAttribute('aria-expanded', String(open));
+        }
+
+        toggle.addEventListener('click', () => setOpen(!sidebar.classList.contains('sidebar-open')));
+        overlay.addEventListener('click', () => setOpen(false));
 
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') {
-                sidebar.classList.remove('sidebar-open');
-                toggle.setAttribute('aria-expanded', 'false');
-            }
+            if (event.key === 'Escape') setOpen(false);
         });
 
-        document.addEventListener('click', (event) => {
-            if (
-                window.innerWidth <= 900 &&
-                sidebar.classList.contains('sidebar-open') &&
-                !sidebar.contains(event.target) &&
-                !toggle.contains(event.target)
-            ) {
-                sidebar.classList.remove('sidebar-open');
-                toggle.setAttribute('aria-expanded', 'false');
-            }
+        // Si se agranda la ventana, cerrar el estado móvil
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= BREAKPOINT) setOpen(false);
+        });
+
+        // Los módulos "Próximamente" no navegan; los demás cierran el menú en móvil
+        sidebar.querySelectorAll('.mq-nav-link').forEach((link) => {
+            link.addEventListener('click', (event) => {
+                if (link.classList.contains('is-disabled')) {
+                    event.preventDefault();
+                    return;
+                }
+                if (window.innerWidth < BREAKPOINT) setOpen(false);
+            });
+        });
+
+        // Los mensajes de éxito e info se cierran solos a los 6 segundos
+        document.querySelectorAll('.mq-messages .alert-success, .mq-messages .alert-info').forEach((el) => {
+            setTimeout(() => {
+                if (document.body.contains(el)) bootstrap.Alert.getOrCreateInstance(el).close();
+            }, 6000);
         });
     })();
 </script>

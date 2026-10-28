@@ -3,62 +3,374 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro - Sistema de Alquiler de Equipos</title>
-    <!-- Bootstrap 5 CSS CDN -->
+    <title>Crear cuenta · MaquiRent</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --mq-ink: #1f2a33;
+            --mq-steel: #5b6b77;
+            --mq-concrete: #eef0f1;
+            --mq-line: #d9dee2;
+            --mq-amber: #f2b705;
+            --mq-amber-dark: #c99700;
+        }
+        body {
+            font-family: 'Barlow', system-ui, sans-serif;
+            color: var(--mq-ink);
+            background: var(--mq-concrete);
+            min-height: 100vh;
+        }
+        h1, h2, .mq-brand-name {
+            font-family: 'Barlow Semi Condensed', 'Barlow', sans-serif;
+            font-weight: 700;
+            letter-spacing: -.01em;
+        }
+
+        .mq-shell { min-height: 100vh; display: grid; grid-template-columns: 1fr; }
+        @media (min-width: 992px) { .mq-shell { grid-template-columns: 5fr 6fr; } }
+
+        /* Panel izquierdo (queda fijo mientras el formulario se desplaza) */
+        .mq-side {
+            display: none;
+            background: var(--mq-ink);
+            color: #fff;
+            padding: 3rem;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        @media (min-width: 992px) { .mq-side { display: flex; } }
+        .mq-side h2 { font-size: clamp(2rem, 3.2vw, 2.9rem); line-height: 1.05; max-width: 22rem; }
+        .mq-side p { color: #b9c4cc; font-size: 1.1rem; max-width: 24rem; }
+        .mq-side .mq-hazard {
+            position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
+            background: repeating-linear-gradient(-45deg, var(--mq-amber) 0 14px, var(--mq-ink) 14px 28px);
+        }
+
+        /* Marca */
+        .mq-brand { display: inline-flex; align-items: center; gap: .6rem; text-decoration: none; color: inherit; }
+        .mq-brand-mark {
+            width: 40px; height: 40px;
+            display: grid; place-items: center;
+            border-radius: 10px;
+            background: var(--mq-amber);
+            color: var(--mq-ink);
+            font-size: 1.2rem;
+        }
+        .mq-side .mq-brand { color: #fff; }
+        .mq-brand-name { font-size: 1.6rem; }
+
+        /* Formulario */
+        .mq-main { display: grid; place-items: center; padding: 2rem 1rem; }
+        .mq-card {
+            width: 100%;
+            max-width: 480px;
+            background: #fff;
+            border: 1px solid var(--mq-line);
+            border-radius: 20px;
+            padding: 2.2rem 2rem 1.8rem;
+        }
+        .mq-card .mq-brand-mobile { display: inline-flex; margin-bottom: 1.5rem; }
+        .mq-card .mq-brand-mobile .mq-brand-mark { background: var(--mq-ink); color: var(--mq-amber); }
+        @media (min-width: 992px) { .mq-card .mq-brand-mobile { display: none; } }
+        .mq-card h1 { font-size: 2rem; margin-bottom: .25rem; }
+        .mq-card .mq-sub { color: var(--mq-steel); margin-bottom: 1.6rem; }
+
+        .mq-card .form-label { font-weight: 600; font-size: .92rem; margin-bottom: .35rem; }
+        .mq-card .form-control,
+        .mq-card .form-select,
+        .mq-card .input-group-text,
+        .mq-card .btn-eye {
+            border-color: #c5ccd2;
+            padding: .65rem .85rem;
+            min-height: 48px;
+        }
+        .mq-card .input-group-text { background: var(--mq-concrete); color: var(--mq-steel); }
+        .mq-card .btn-eye { background: #fff; color: var(--mq-steel); border: 1px solid #c5ccd2; }
+        .mq-card .btn-eye:hover { background: var(--mq-concrete); color: var(--mq-ink); }
+        .mq-card .form-control:focus,
+        .mq-card .form-select:focus {
+            border-color: var(--mq-amber-dark);
+            box-shadow: 0 0 0 .25rem rgba(242, 183, 5, .28);
+            position: relative; z-index: 3;
+        }
+        .mq-card .invalid-feedback { font-size: .86rem; }
+        .mq-card .form-text { font-size: .8rem; color: var(--mq-steel); }
+        .mq-card .form-text ul { margin: .35rem 0 0; padding-left: 1.1rem; }
+        .mq-card .form-text li { margin-bottom: .1rem; }
+
+        /* Medidor de contraseña */
+        .mq-meter { height: 6px; background: var(--mq-concrete); border-radius: 999px; overflow: hidden; margin-top: .6rem; }
+        .mq-meter > span { display: block; height: 100%; width: 0; border-radius: 999px; transition: width .25s, background .25s; }
+        .mq-meter-text { font-size: .82rem; margin-top: .3rem; color: var(--mq-steel); min-height: 1.1em; }
+        .mq-match { font-size: .85rem; margin-top: .4rem; min-height: 1.1em; }
+        .mq-match.ok { color: #1e7a3c; }
+        .mq-match.bad { color: #b3261e; }
+
+        .mq-btn-primary {
+            background: var(--mq-amber);
+            border: 0;
+            color: var(--mq-ink);
+            font-weight: 700;
+            padding: .8rem 1.4rem;
+            border-radius: 10px;
+            font-size: 1.05rem;
+        }
+        .mq-btn-primary:hover, .mq-btn-primary:focus { background: var(--mq-amber-dark); color: var(--mq-ink); }
+        .mq-btn-primary:disabled { background: var(--mq-amber); color: var(--mq-ink); opacity: .75; }
+
+        .mq-links { font-size: .95rem; color: var(--mq-steel); }
+        .mq-links a { color: var(--mq-ink); font-weight: 600; text-decoration: none; border-bottom: 2px solid var(--mq-amber); }
+        .mq-links a:hover { background: rgba(242, 183, 5, .25); }
+        .mq-back { color: var(--mq-steel); text-decoration: none; font-size: .95rem; }
+        .mq-back:hover { color: var(--mq-ink); }
+
+        /* d-flex de Bootstrap anula el atributo hidden; esto lo respeta */
+        #aviso-mayusculas[hidden] { display: none !important; }
+
+        :focus-visible { outline: 3px solid var(--mq-amber-dark); outline-offset: 2px; }
+    </style>
 </head>
-<body class="bg-light d-flex flex-column min-vh-100 justify-content-center align-items-center">
+<body>
+    <div class="mq-shell">
 
-    <div class="card shadow-sm p-4 w-100" style="max-width: 450px;">
-        
-        <div class="text-center mb-4">
-            <h2 class="h4 text-primary fw-bold">MaquiRent</h2>
-            <h1 class="h5 text-secondary">Crear cuenta nueva</h1>
-        </div>
-
-        {% if form.errors %}
-            <div class="alert alert-danger alert-dismissible fade show py-2 small" role="alert">
-                Por favor, corrige los errores en el formulario.
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <!-- Panel de marca (solo en pantallas grandes) -->
+        <aside class="mq-side">
+            <a class="mq-brand" href="{% url 'index' %}">
+                <span class="mq-brand-mark"><i class="bi bi-truck-flatbed"></i></span>
+                <span class="mq-brand-name">MaquiRent</span>
+            </a>
+            <div>
+                <h2>Crea tu cuenta y empieza a trabajar</h2>
+                <p>Regístrate para consultar el catálogo de maquinaria y gestionar tus solicitudes de alquiler en un solo lugar.</p>
             </div>
-        {% endif %}
+            <span class="small" style="color:#7d8b95;">Sistema de alquiler de equipos</span>
+            <div class="mq-hazard" aria-hidden="true"></div>
+        </aside>
 
-        <form method="post">
-            {% csrf_token %}
+        <!-- Formulario -->
+        <main class="mq-main">
+            <div class="mq-card">
 
-            {% for field in form %}
-                <div class="mb-3">
-                    <label for="{{ field.id_for_label }}" class="form-label fw-semibold small">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}
-                        <div class="form-text text-muted" style="font-size: 0.75rem;">{{ field.help_text }}</div>
-                    {% endif %}
-                    {% for error in field.errors %}
-                        <div class="text-danger small mt-1">{{ error }}</div>
+                <a class="mq-brand mq-brand-mobile" href="{% url 'index' %}">
+                    <span class="mq-brand-mark"><i class="bi bi-truck-flatbed"></i></span>
+                    <span class="mq-brand-name">MaquiRent</span>
+                </a>
+
+                <h1>Crear cuenta</h1>
+                <p class="mq-sub">Completa tus datos para registrarte.</p>
+
+                {% if form.errors %}
+                    <div class="alert alert-danger alert-dismissible fade show d-flex gap-2 align-items-start py-2 small" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                        <div>
+                            Revisa los campos marcados y corrige los errores.
+                            {% for error in form.non_field_errors %}<div class="mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
+                {% endif %}
+
+                <form method="post" id="mqRegistro">
+                    {% csrf_token %}
+
+                    {% for field in form %}
+                        <div class="mb-3 mq-field" data-name="{{ field.name }}">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <div class="invalid-feedback d-block" data-server="1">{{ error }}</div>
+                            {% endfor %}
+                            {% if field.help_text %}
+                                <div class="form-text">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                        </div>
                     {% endfor %}
+
+                    {# Aviso de Bloq Mayús, visible solo al escribir una contraseña #}
+                    <div id="aviso-mayusculas" class="alert alert-warning d-flex gap-2 align-items-center py-2 px-3 small mb-3" role="status" hidden>
+                        <i class="bi bi-exclamation-triangle"></i> Bloq Mayús está activado.
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn mq-btn-primary" id="mqCrear">
+                            <span class="mq-label">Crear cuenta</span>
+                            <span class="mq-loading d-none">
+                                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Creando cuenta…
+                            </span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="mq-links text-center mt-4">
+                    ¿Ya tienes cuenta? <a href="{% url 'login' %}">Inicia sesión</a>
                 </div>
-            {% endfor %}
-
-            <div class="d-grid mt-4">
-                <button type="submit" class="btn btn-primary">Registrarse</button>
+                <div class="text-center mt-3">
+                    <a href="{% url 'index' %}" class="mq-back"><i class="bi bi-arrow-left"></i> Volver al inicio</a>
+                </div>
             </div>
-        </form>
-
-        <div class="text-center mt-3">
-            <a href="{% url 'login' %}" class="text-decoration-none text-muted small">&larr; ¿Ya tienes cuenta? Inicia sesión aquí</a>
-        </div>
+        </main>
     </div>
 
-    <!-- Script para inyectar clases de Bootstrap a los campos de Django -->
     <script>
-        document.querySelectorAll('input').forEach(input => {
-            if (input.type !== 'checkbox' && input.type !== 'radio') {
-                input.classList.add('form-control');
-            }
-        });
-    </script>
+    (function () {
+        var form = document.getElementById('mqRegistro');
+        var aviso = document.getElementById('aviso-mayusculas');
+        var campos = Array.prototype.slice.call(form.querySelectorAll('.mq-field'));
 
-    <!-- Bootstrap JS Bundle -->
+        // Ícono según el tipo de campo (si no reconoce el nombre, no pone ícono)
+        function iconoPara(control) {
+            var n = (control.name || '').toLowerCase();
+            if (control.type === 'password' || n.indexOf('pass') !== -1 || n.indexOf('clave') !== -1) return 'bi-lock';
+            if (control.type === 'email' || n.indexOf('email') !== -1 || n.indexOf('correo') !== -1) return 'bi-envelope';
+            if (control.type === 'tel' || n.indexOf('tel') !== -1 || n.indexOf('phone') !== -1) return 'bi-telephone';
+            if (n.indexOf('user') !== -1 || n.indexOf('usuario') !== -1) return 'bi-person';
+            if (n.indexOf('nombre') !== -1 || n.indexOf('name') !== -1 || n.indexOf('apellido') !== -1) return 'bi-person-badge';
+            return '';
+        }
+
+        var passwords = [];
+
+        campos.forEach(function (wrap) {
+            var control = wrap.querySelector('input, select, textarea');
+            if (!control) return;
+
+            // 1) Clases de Bootstrap
+            if (control.type === 'checkbox' || control.type === 'radio') {
+                control.classList.add('form-check-input');
+                return;
+            }
+            control.classList.add(control.tagName === 'SELECT' ? 'form-select' : 'form-control');
+            if (wrap.querySelector('.invalid-feedback')) control.classList.add('is-invalid');
+
+            // 2) Ícono + (ojo si es contraseña)
+            var icono = iconoPara(control);
+            var esClave = control.type === 'password';
+            if (control.tagName !== 'SELECT' && (icono || esClave)) {
+                var group = document.createElement('div');
+                group.className = 'input-group';
+                control.parentNode.insertBefore(group, control);
+                if (icono) {
+                    var pre = document.createElement('span');
+                    pre.className = 'input-group-text';
+                    pre.innerHTML = '<i class="bi ' + icono + '"></i>';
+                    group.appendChild(pre);
+                }
+                group.appendChild(control);
+
+                if (esClave) {
+                    var ojo = document.createElement('button');
+                    ojo.type = 'button';
+                    ojo.className = 'btn btn-eye';
+                    ojo.title = 'Mostrar contraseña';
+                    ojo.setAttribute('aria-label', 'Mostrar contraseña');
+                    ojo.setAttribute('aria-pressed', 'false');
+                    ojo.innerHTML = '<i class="bi bi-eye"></i>';
+                    group.appendChild(ojo);
+
+                    ojo.addEventListener('click', function () {
+                        var mostrar = control.type === 'password';
+                        control.type = mostrar ? 'text' : 'password';
+                        var texto = mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña';
+                        ojo.title = texto;
+                        ojo.setAttribute('aria-label', texto);
+                        ojo.setAttribute('aria-pressed', String(mostrar));
+                        ojo.firstChild.className = mostrar ? 'bi bi-eye-slash' : 'bi bi-eye';
+                    });
+
+                    // Bloq Mayús
+                    function caps(e) { aviso.hidden = !e.getModifierState('CapsLock'); }
+                    control.addEventListener('keydown', caps);
+                    control.addEventListener('keyup', caps);
+                    control.addEventListener('blur', function () { aviso.hidden = true; });
+
+                    passwords.push({ wrap: wrap, control: control });
+                }
+            }
+
+            // Al editar, quitar el error que vino del servidor
+            control.addEventListener('input', function () {
+                control.classList.remove('is-invalid');
+                wrap.querySelectorAll('.invalid-feedback[data-server]').forEach(function (el) { el.remove(); });
+            });
+        });
+
+        // 3) Medidor de fortaleza (1.ª contraseña) y coincidencia (2.ª contraseña)
+        if (passwords.length >= 1) {
+            var p1 = passwords[0].control;
+            var meter = document.createElement('div');
+            meter.innerHTML = '<div class="mq-meter"><span></span></div><div class="mq-meter-text" aria-live="polite"></div>';
+            var anchor = passwords[0].wrap.querySelector('.input-group');
+            anchor.insertAdjacentElement('afterend', meter);
+            var barra = meter.querySelector('.mq-meter > span');
+            var etiqueta = meter.querySelector('.mq-meter-text');
+
+            var NIVELES = [
+                { txt: '', color: 'transparent', w: 0 },
+                { txt: 'Débil', color: '#b3261e', w: 25 },
+                { txt: 'Aceptable', color: '#e08a00', w: 50 },
+                { txt: 'Buena', color: '#7aa800', w: 75 },
+                { txt: 'Fuerte', color: '#1e7a3c', w: 100 }
+            ];
+            function puntuar(v) {
+                if (!v) return 0;
+                var s = 0;
+                if (v.length >= 8) s++;
+                if (/[a-z]/.test(v) && /[A-Z]/.test(v)) s++;
+                if (/\d/.test(v)) s++;
+                if (/[^A-Za-z0-9]/.test(v) || v.length >= 14) s++;
+                return Math.max(s, 1);
+            }
+            function actualizarMedidor() {
+                var n = NIVELES[puntuar(p1.value)];
+                barra.style.width = n.w + '%';
+                barra.style.background = n.color;
+                etiqueta.textContent = n.txt ? 'Seguridad: ' + n.txt : '';
+            }
+            p1.addEventListener('input', actualizarMedidor);
+            actualizarMedidor();
+        }
+
+        if (passwords.length >= 2) {
+            var p1b = passwords[0].control, p2 = passwords[1].control;
+            var estado = document.createElement('div');
+            estado.className = 'mq-match';
+            estado.setAttribute('aria-live', 'polite');
+            passwords[1].wrap.querySelector('.input-group').insertAdjacentElement('afterend', estado);
+
+            function comprobar() {
+                if (!p2.value) { estado.textContent = ''; estado.className = 'mq-match'; return; }
+                var ok = p1b.value === p2.value;
+                estado.className = 'mq-match ' + (ok ? 'ok' : 'bad');
+                estado.innerHTML = ok
+                    ? '<i class="bi bi-check-circle-fill"></i> Las contraseñas coinciden'
+                    : '<i class="bi bi-x-circle-fill"></i> Las contraseñas no coinciden';
+            }
+            p1b.addEventListener('input', comprobar);
+            p2.addEventListener('input', comprobar);
+        }
+
+        // 4) Si el servidor devolvió errores, ir al primero
+        var primero = form.querySelector('.is-invalid');
+        if (primero) {
+            primero.scrollIntoView({ block: 'center' });
+            primero.focus({ preventScroll: true });
+        }
+
+        // 5) Evitar doble envío
+        form.addEventListener('submit', function () {
+            var btn = document.getElementById('mqCrear');
+            btn.disabled = true;
+            btn.querySelector('.mq-label').classList.add('d-none');
+            btn.querySelector('.mq-loading').classList.remove('d-none');
+        });
+    })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

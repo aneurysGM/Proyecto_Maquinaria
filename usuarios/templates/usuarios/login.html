@@ -3,113 +3,281 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar sesión - Proyecto Alquiler</title>
-    <!-- Bootstrap 5 CSS CDN -->
+    <title>Iniciar sesión · MaquiRent</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --mq-ink: #1f2a33;
+            --mq-steel: #5b6b77;
+            --mq-concrete: #eef0f1;
+            --mq-line: #d9dee2;
+            --mq-amber: #f2b705;
+            --mq-amber-dark: #c99700;
+            --mq-radius: 14px;
+        }
+        body {
+            font-family: 'Barlow', system-ui, sans-serif;
+            color: var(--mq-ink);
+            background: var(--mq-concrete);
+            min-height: 100vh;
+        }
+        h1, h2, .mq-brand-name {
+            font-family: 'Barlow Semi Condensed', 'Barlow', sans-serif;
+            font-weight: 700;
+            letter-spacing: -.01em;
+        }
+
+        .mq-shell {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+        @media (min-width: 992px) {
+            .mq-shell { grid-template-columns: 5fr 6fr; }
+        }
+
+        /* Panel izquierdo */
+        .mq-side {
+            display: none;
+            background: var(--mq-ink);
+            color: #fff;
+            padding: 3rem;
+            position: relative;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        @media (min-width: 992px) { .mq-side { display: flex; } }
+        .mq-side h2 { font-size: clamp(2rem, 3.2vw, 2.9rem); line-height: 1.05; max-width: 22rem; }
+        .mq-side p { color: #b9c4cc; font-size: 1.1rem; max-width: 24rem; }
+        .mq-side .mq-hazard {
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            height: 12px;
+            background: repeating-linear-gradient(-45deg, var(--mq-amber) 0 14px, var(--mq-ink) 14px 28px);
+        }
+
+        /* Marca */
+        .mq-brand { display: inline-flex; align-items: center; gap: .6rem; text-decoration: none; color: inherit; }
+        .mq-brand-mark {
+            width: 40px; height: 40px;
+            display: grid; place-items: center;
+            border-radius: 10px;
+            background: var(--mq-amber);
+            color: var(--mq-ink);
+            font-size: 1.2rem;
+        }
+        .mq-side .mq-brand { color: #fff; }
+        .mq-brand-name { font-size: 1.6rem; }
+
+        /* Formulario */
+        .mq-main { display: grid; place-items: center; padding: 2rem 1rem; }
+        .mq-card {
+            width: 100%;
+            max-width: 440px;
+            background: #fff;
+            border: 1px solid var(--mq-line);
+            border-radius: 20px;
+            padding: 2.2rem 2rem 1.8rem;
+        }
+        .mq-card .mq-brand-mobile { display: inline-flex; margin-bottom: 1.5rem; }
+        .mq-card .mq-brand-mobile .mq-brand-mark { background: var(--mq-ink); color: var(--mq-amber); }
+        @media (min-width: 992px) { .mq-card .mq-brand-mobile { display: none; } }
+        .mq-card h1 { font-size: 2rem; margin-bottom: .25rem; }
+        .mq-card .mq-sub { color: var(--mq-steel); margin-bottom: 1.6rem; }
+
+        .mq-card .form-label { font-weight: 600; font-size: .92rem; margin-bottom: .35rem; }
+        .mq-card .form-control,
+        .mq-card .input-group-text,
+        .mq-card .btn-eye {
+            border-color: #c5ccd2;
+            padding: .65rem .85rem;
+            min-height: 48px;
+        }
+        .mq-card .input-group-text { background: var(--mq-concrete); color: var(--mq-steel); }
+        .mq-card .btn-eye { background: #fff; color: var(--mq-steel); border: 1px solid #c5ccd2; }
+        .mq-card .btn-eye:hover { background: var(--mq-concrete); color: var(--mq-ink); }
+        .mq-card .form-control:focus {
+            border-color: var(--mq-amber-dark);
+            box-shadow: 0 0 0 .25rem rgba(242, 183, 5, .28);
+            position: relative; z-index: 3;
+        }
+        .mq-card .invalid-feedback { font-size: .86rem; }
+
+        .mq-btn-primary {
+            background: var(--mq-amber);
+            border: 0;
+            color: var(--mq-ink);
+            font-weight: 700;
+            padding: .8rem 1.4rem;
+            border-radius: 10px;
+            font-size: 1.05rem;
+        }
+        .mq-btn-primary:hover, .mq-btn-primary:focus { background: var(--mq-amber-dark); color: var(--mq-ink); }
+        .mq-btn-primary:disabled { background: var(--mq-amber); color: var(--mq-ink); opacity: .75; }
+
+        .mq-links { font-size: .95rem; color: var(--mq-steel); }
+        .mq-links a { color: var(--mq-ink); font-weight: 600; text-decoration: none; border-bottom: 2px solid var(--mq-amber); }
+        .mq-links a:hover { background: rgba(242, 183, 5, .25); }
+        .mq-back { color: var(--mq-steel); text-decoration: none; font-size: .95rem; }
+        .mq-back:hover { color: var(--mq-ink); }
+
+        /* d-flex de Bootstrap anula el atributo hidden; esto lo respeta */
+        #aviso-mayusculas[hidden] { display: none !important; }
+
+        :focus-visible { outline: 3px solid var(--mq-amber-dark); outline-offset: 2px; }
+    </style>
 </head>
-<body class="bg-light d-flex flex-column min-vh-100 justify-content-center align-items-center">
+<body>
+    <div class="mq-shell">
 
-    <div class="card shadow-sm p-4 w-100" style="max-width: 420px;">
-        
-        <div class="text-center mb-4">
-            <h2 class="h4 text-primary fw-bold">Sistema de alquiler de equipos</h2>
-            <h1 class="h5 text-secondary">Iniciar sesión</h1>
-        </div>
-
-        <!-- Mensaje para un intento de acceso incorrecto. -->
-        {% if form.errors %}
-            <div class="alert alert-danger alert-dismissible fade show py-2 small" role="alert">
-                Usuario o contraseña incorrectos. Inténtalo de nuevo.
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <!-- Panel de marca (solo en pantallas grandes) -->
+        <aside class="mq-side">
+            <a class="mq-brand" href="{% url 'index' %}">
+                <span class="mq-brand-mark"><i class="bi bi-truck-flatbed"></i></span>
+                <span class="mq-brand-name">MaquiRent</span>
+            </a>
+            <div>
+                <h2>Maquinaria pesada, lista para tu obra</h2>
+                <p>Entra a tu cuenta para consultar el catálogo, ver el estado de los equipos y gestionar tus alquileres.</p>
             </div>
-        {% endif %}
+            <span class="small" style="color:#7d8b95;">Lo que necesitas para mayor comodidad</span>
+            <div class="mq-hazard" aria-hidden="true"></div>
+        </aside>
 
-        <!-- POST envía las credenciales sin colocarlas en la URL. -->
-        <form method="post">
-            <!-- Protección de Django contra solicitudes falsificadas. -->
-            {% csrf_token %}
+        <!-- Formulario -->
+        <main class="mq-main">
+            <div class="mq-card">
 
-            <div class="mb-3">
-                <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold small">Usuario</label>
-                <!-- Aplicamos la clase form-control de Bootstrap -->
-                {{ form.username }}
-                <div class="text-danger small mt-1">{{ form.username.errors }}</div>
-            </div>
+                <a class="mq-brand mq-brand-mobile" href="{% url 'index' %}">
+                    <span class="mq-brand-mark"><i class="bi bi-truck-flatbed"></i></span>
+                    <span class="mq-brand-name">MaquiRent</span>
+                </a>
 
-            <div class="mb-3">
-                <label for="{{ form.password.id_for_label }}" class="form-label fw-semibold small">Contraseña</label>
-                <div class="input-group">
-                    {{ form.password }}
-                    <!-- Botón del ojo con clases de Bootstrap para que encaje como input-group -->
-                    <button 
-                        class="btn btn-outline-secondary" 
-                        type="button" 
-                        id="mostrar-clave"
-                        aria-label="Mostrar contraseña"
-                        aria-pressed="false"
-                        aria-controls="id_password"
-                        title="Mostrar contraseña"
-                    >👁</button>
+                <h1>Iniciar sesión</h1>
+                <p class="mq-sub">Ingresa tus datos para continuar.</p>
+
+                {# Mensaje para un intento de acceso incorrecto #}
+                {% if form.errors %}
+                    <div class="alert alert-danger alert-dismissible fade show d-flex gap-2 align-items-start py-2 small" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                        <div>Usuario o contraseña incorrectos. Inténtalo de nuevo.</div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
+                {% endif %}
+
+                {# POST envía las credenciales sin colocarlas en la URL #}
+                <form method="post" id="mqLogin">
+                    {# Protección de Django contra solicitudes falsificadas #}
+                    {% csrf_token %}
+                    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.username.id_for_label }}" class="form-label">Usuario</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            {{ form.username }}
+                        </div>
+                        {% for error in form.username.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.password.id_for_label }}" class="form-label">Contraseña</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            {{ form.password }}
+                            <button class="btn btn-eye" type="button" id="mostrar-clave"
+                                    aria-label="Mostrar contraseña" aria-pressed="false"
+                                    aria-controls="id_password" title="Mostrar contraseña">
+                                <i class="bi bi-eye" id="icono-ojo"></i>
+                            </button>
+                        </div>
+                        {% for error in form.password.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    {# Oculto hasta detectar Bloq Mayús activo #}
+                    <div id="aviso-mayusculas" class="alert alert-warning d-flex gap-2 align-items-center py-2 px-3 small mb-3" role="status" hidden>
+                        <i class="bi bi-exclamation-triangle"></i> Bloq Mayús está activado.
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn mq-btn-primary" id="mqEntrar">
+                            <span class="mq-label">Entrar</span>
+                            <span class="mq-loading d-none">
+                                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Entrando…
+                            </span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="mq-links text-center mt-4">
+                    ¿Aún no tienes cuenta? <a href="{% url 'registro' %}">Regístrate</a>
                 </div>
-                <div class="text-danger small mt-1">{{ form.password.errors }}</div>
+                <div class="text-center mt-3">
+                    <a href="{% url 'index' %}" class="mq-back"><i class="bi bi-arrow-left"></i> Volver al inicio</a>
+                </div>
             </div>
-
-            <!-- Oculto hasta detectar Bloq Mayús activo. -->
-            <div id="aviso-mayusculas" class="alert alert-warning py-1 px-2 small mb-3" role="status" hidden>
-                ⚠️ Bloq Mayús está activado.
-            </div>
-
-            <div class="d-grid mt-4">
-                <button type="submit" class="btn btn-primary">Entrar</button>
-            </div>
-        </form>
-
-        <div class="text-center mt-3">
-            <a href="{% url 'index' %}" class="text-decoration-none text-muted small">&larr; Volver al inicio</a>
-        </div>
+        </main>
     </div>
 
-    <!-- Script original de tu compañero para el manejo del ojo y Bloq Mayús -->
     <script>
-        // Localiza los elementos que vamos a controlar.
+        // Elementos que vamos a controlar
         const campoClave = document.getElementById('id_password');
+        const campoUser = document.getElementById('id_username');
         const botonOjo = document.getElementById('mostrar-clave');
+        const iconoOjo = document.getElementById('icono-ojo');
         const avisoMayusculas = document.getElementById('aviso-mayusculas');
 
-        // Aseguramos que Django agregue la clase form-control por JS si no la tiene en el backend
-        if (campoClave) campoClave.classList.add('form-control');
-        const campoUser = document.getElementById('id_username');
-        if (campoUser) campoUser.classList.add('form-control');
+        // Django no pone las clases de Bootstrap en sus widgets, las añadimos aquí
+        if (campoClave) {
+            campoClave.classList.add('form-control');
+            campoClave.setAttribute('autocomplete', 'current-password');
+        }
+        if (campoUser) {
+            campoUser.classList.add('form-control');
+            campoUser.setAttribute('autocomplete', 'username');
+            campoUser.setAttribute('placeholder', 'Tu usuario');
+            if (!document.querySelector('.invalid-feedback')) campoUser.focus();
+        }
 
-        // Un clic muestra la contraseña; otro vuelve a ocultarla.
+        // Un clic muestra la contraseña; otro vuelve a ocultarla
         botonOjo.addEventListener('click', function () {
             const mostrar = campoClave.type === 'password';
             campoClave.type = mostrar ? 'text' : 'password';
 
-            const descripcion = mostrar
-                ? 'Ocultar contraseña'
-                : 'Mostrar contraseña';
-
+            const descripcion = mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña';
             botonOjo.setAttribute('aria-label', descripcion);
             botonOjo.setAttribute('aria-pressed', String(mostrar));
             botonOjo.title = descripcion;
+            iconoOjo.className = mostrar ? 'bi bi-eye-slash' : 'bi bi-eye';
         });
 
-        // Comprueba Bloq Mayús cuando se pulsa una tecla en el campo.
+        // Comprueba Bloq Mayús cuando se pulsa una tecla en el campo
         function comprobarMayusculas(evento) {
             avisoMayusculas.hidden = !evento.getModifierState('CapsLock');
         }
-
         campoClave.addEventListener('keydown', comprobarMayusculas);
         campoClave.addEventListener('keyup', comprobarMayusculas);
 
-        // Oculta el aviso cuando dejamos el campo de contraseña.
+        // Oculta el aviso cuando dejamos el campo de contraseña
         campoClave.addEventListener('blur', function () {
             avisoMayusculas.hidden = true;
         });
+
+        // Evita doble envío y muestra "Entrando…"
+        document.getElementById('mqLogin').addEventListener('submit', function () {
+            const btn = document.getElementById('mqEntrar');
+            btn.disabled = true;
+            btn.querySelector('.mq-label').classList.add('d-none');
+            btn.querySelector('.mq-loading').classList.remove('d-none');
+        });
     </script>
-    
-    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
