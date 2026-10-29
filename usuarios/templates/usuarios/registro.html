@@ -226,6 +226,7 @@
         // Ícono según el tipo de campo (si no reconoce el nombre, no pone ícono)
         function iconoPara(control) {
             var n = (control.name || '').toLowerCase();
+            if (n.indexOf('cedula') !== -1) return 'bi-person-vcard';
             if (control.type === 'password' || n.indexOf('pass') !== -1 || n.indexOf('clave') !== -1) return 'bi-lock';
             if (control.type === 'email' || n.indexOf('email') !== -1 || n.indexOf('correo') !== -1) return 'bi-envelope';
             if (control.type === 'tel' || n.indexOf('tel') !== -1 || n.indexOf('phone') !== -1) return 'bi-telephone';
@@ -291,6 +292,44 @@
 
                     passwords.push({ wrap: wrap, control: control });
                 }
+            }
+
+            // Cédula: formato 000-0000000-0 mientras escribe + aviso de validez
+            if ((control.name || '').toLowerCase().indexOf('cedula') !== -1) {
+                control.setAttribute('inputmode', 'numeric');
+                control.setAttribute('maxlength', '13');
+
+                var aviso_ced = document.createElement('div');
+                aviso_ced.className = 'mq-match';
+                aviso_ced.setAttribute('aria-live', 'polite');
+                (wrap.querySelector('.input-group') || control).insertAdjacentElement('afterend', aviso_ced);
+
+                var cedulaValida = function (d) {
+                    if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false;
+                    var pesos = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2], suma = 0;
+                    for (var i = 0; i < 10; i++) {
+                        var p = parseInt(d.charAt(i), 10) * pesos[i];
+                        suma += p > 9 ? p - 9 : p;
+                    }
+                    return ((10 - suma % 10) % 10) === parseInt(d.charAt(10), 10);
+                };
+
+                var revisarCedula = function () {
+                    var d = control.value.replace(/\D/g, '').slice(0, 11);
+                    var f = d;
+                    if (d.length > 3) f = d.slice(0, 3) + '-' + d.slice(3);
+                    if (d.length > 10) f = d.slice(0, 3) + '-' + d.slice(3, 10) + '-' + d.slice(10);
+                    control.value = f;
+
+                    if (d.length < 11) { aviso_ced.className = 'mq-match'; aviso_ced.textContent = ''; return; }
+                    var ok = cedulaValida(d);
+                    aviso_ced.className = 'mq-match ' + (ok ? 'ok' : 'bad');
+                    aviso_ced.innerHTML = ok
+                        ? '<i class="bi bi-check-circle-fill"></i> Cédula válida'
+                        : '<i class="bi bi-x-circle-fill"></i> El número de cédula no es válido';
+                };
+                control.addEventListener('input', revisarCedula);
+                if (control.value) revisarCedula();
             }
 
             // Al editar, quitar el error que vino del servidor

@@ -301,12 +301,18 @@
             </a>
             {% endif %}
 
+            {% if puede_gestionar_clientes %}
+            <a href="{% url 'cliente_lista' %}"
+               class="mq-nav-link {% if request.resolver_match.url_name in 'cliente_lista cliente_detalle' %}active{% endif %}"
+               {% if request.resolver_match.url_name in 'cliente_lista cliente_detalle' %}aria-current="page"{% endif %}>
+                <i class="bi bi-people"></i>
+                <span>Clientes</span>
+            </a>
+            {% endif %}
+
             <!-- Módulos pendientes de implementar -->
             <div class="mq-nav-group">Próximamente</div>
 
-            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
-                <i class="bi bi-people"></i><span>Clientes</span><span class="mq-soon">Pronto</span>
-            </a>
             <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
                 <i class="bi bi-file-earmark-text"></i><span>Alquileres</span><span class="mq-soon">Pronto</span>
             </a>

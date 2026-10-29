@@ -1,0 +1,267 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Clientes{% endblock %}
+{% block page_name %}Clientes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mq-wrap { max-width: 1200px; margin: 0 auto; padding: 2rem 0 4rem; color: var(--mq-ink); }
+    .mq-wrap h1, .mq-wrap h2 {
+        font-family: 'Barlow Semi Condensed', 'Barlow', sans-serif;
+        font-weight: 700;
+        letter-spacing: -.01em;
+    }
+    .mq-head { margin-bottom: 1.5rem; }
+    .mq-head h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); margin: 0 0 .25rem; }
+    .mq-head p { color: var(--mq-steel); font-size: 1.05rem; margin: 0; }
+
+    /* Botones */
+    .mq-btn-primary { background: var(--mq-amber); border: 0; color: var(--mq-ink); font-weight: 700; padding: .65rem 1.4rem; border-radius: 10px; }
+    .mq-btn-primary:hover, .mq-btn-primary:focus { background: var(--mq-amber-dark); color: var(--mq-ink); }
+    .mq-btn-secondary { border: 1px solid #c5ccd2; background: #fff; color: var(--mq-ink); font-weight: 600; padding: .65rem 1.2rem; border-radius: 10px; }
+    .mq-btn-secondary:hover { background: var(--mq-concrete); color: var(--mq-ink); }
+
+    /* Resumen */
+    .mq-stat {
+        display: flex; align-items: center; gap: .9rem;
+        background: #fff; border: 1px solid var(--mq-line);
+        border-radius: var(--mq-radius); padding: 1rem 1.1rem; height: 100%;
+    }
+    .mq-stat .mq-icon {
+        width: 44px; height: 44px; display: grid; place-items: center;
+        border-radius: 12px; background: var(--mq-ink); color: var(--mq-amber);
+        font-size: 1.25rem; flex-shrink: 0;
+    }
+    .mq-stat strong { display: block; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 1.8rem; line-height: 1; }
+    .mq-stat span.mq-label { color: var(--mq-steel); font-size: .9rem; }
+
+    /* Filtros */
+    .mq-filters { background: #fff; border: 1px solid var(--mq-line); border-radius: var(--mq-radius); padding: 1.1rem 1.2rem; margin-bottom: 1rem; }
+    .mq-wrap .form-label { font-weight: 600; font-size: .9rem; margin-bottom: .35rem; }
+    .mq-wrap .form-control, .mq-wrap .form-select, .mq-wrap .input-group-text { border-color: #c5ccd2; padding: .6rem .8rem; min-height: 46px; }
+    .mq-wrap .input-group-text { background: var(--mq-concrete); color: var(--mq-steel); }
+    .mq-wrap .form-control:focus, .mq-wrap .form-select:focus { border-color: var(--mq-amber-dark); box-shadow: 0 0 0 .25rem rgba(242,183,5,.28); }
+
+    .mq-summary { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .75rem; color: var(--mq-steel); font-weight: 500; }
+    .mq-chip { display: inline-flex; align-items: center; gap: .35rem; background: var(--mq-concrete); border-radius: 999px; padding: .2rem .7rem; font-size: .85rem; color: var(--mq-ink); white-space: nowrap; }
+
+    /* Tabla */
+    .mq-table-card { background: #fff; border: 1px solid var(--mq-line); border-radius: var(--mq-radius); overflow: hidden; }
+    .mq-table { margin: 0; }
+    .mq-table thead th { background: var(--mq-ink); color: #fff; font-weight: 600; font-size: .88rem; border: 0; padding: .85rem 1rem; white-space: nowrap; }
+    .mq-table tbody td { padding: .95rem 1rem; vertical-align: middle; border-color: var(--mq-line); }
+    .mq-table tbody tr { cursor: pointer; transition: background .15s; }
+    .mq-table tbody tr:hover { background: #fffbea; }
+
+    .mq-person { display: flex; align-items: center; gap: .75rem; }
+    .mq-avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--mq-amber); color: var(--mq-ink); font-weight: 700; flex-shrink: 0; }
+    .mq-name { font-weight: 600; display: block; line-height: 1.2; }
+    .mq-sub { color: var(--mq-steel); font-size: .85rem; }
+    .mq-none { color: #8a96a0; font-style: italic; font-size: .9rem; }
+    .mq-link { color: var(--mq-ink); font-weight: 600; text-decoration: none; border-bottom: 2px solid var(--mq-amber); white-space: nowrap; }
+    .mq-link:hover { color: var(--mq-ink); background: rgba(242,183,5,.25); }
+
+    .mq-status { display: inline-flex; align-items: center; gap: .4rem; border-radius: 999px; padding: .25rem .75rem; font-size: .85rem; font-weight: 600; }
+    .mq-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .mq-status.is-ok { background: #e3f4e8; color: #1e7a3c; }
+    .mq-status.is-off { background: #fde4e1; color: #b3261e; }
+    .mq-perms { display: flex; flex-wrap: wrap; gap: .35rem; }
+
+    /* Paginación */
+    .mq-pager { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.25rem; color: var(--mq-steel); font-weight: 500; }
+
+    /* Vacío */
+    .mq-empty { background: #fff; border: 1px dashed #b9c2c9; border-radius: var(--mq-radius); text-align: center; padding: 3.5rem 1.5rem; }
+    .mq-empty .mq-empty-icon { width: 64px; height: 64px; margin: 0 auto 1rem; display: grid; place-items: center; border-radius: 16px; background: var(--mq-ink); color: var(--mq-amber); font-size: 1.9rem; }
+    .mq-empty h2 { font-size: 1.5rem; margin-bottom: .35rem; }
+    .mq-empty p { color: var(--mq-steel); margin-bottom: 1.25rem; }
+
+    @media (max-width: 767.98px) {
+        .mq-table thead { display: none; }
+        .mq-table, .mq-table tbody, .mq-table tr, .mq-table td { display: block; width: 100%; }
+        .mq-table tbody tr { padding: .9rem 1rem; border-bottom: 1px solid var(--mq-line); }
+        .mq-table tbody td { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .3rem 0; border: 0; text-align: right; }
+        .mq-table tbody td::before { content: attr(data-label); font-weight: 600; color: var(--mq-steel); text-align: left; flex-shrink: 0; }
+        .mq-table tbody td[data-label=""]::before { display: none; }
+        .mq-table tbody td.mq-cell-person { justify-content: flex-start; padding-bottom: .6rem; }
+        .mq-table tbody td.mq-cell-person::before { display: none; }
+        .mq-table tbody td.mq-cell-actions { justify-content: flex-end; padding-top: .6rem; }
+        .mq-perms { justify-content: flex-end; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mq-wrap">
+
+    <header class="mq-head">
+        <h1>Clientes</h1>
+        <p>Consulta a los clientes registrados y gestiona lo que pueden hacer en el sistema.</p>
+    </header>
+
+    {# ---------- Resumen ---------- #}
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="mq-stat">
+                <span class="mq-icon"><i class="bi bi-people"></i></span>
+                <div><strong>{{ resumen.total }}</strong><span class="mq-label">Registrados</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="mq-stat">
+                <span class="mq-icon"><i class="bi bi-person-check"></i></span>
+                <div><strong>{{ resumen.activos }}</strong><span class="mq-label">Activos</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="mq-stat">
+                <span class="mq-icon"><i class="bi bi-person-slash"></i></span>
+                <div><strong>{{ resumen.inactivos }}</strong><span class="mq-label">Desactivados</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="mq-stat">
+                <span class="mq-icon"><i class="bi bi-person-plus"></i></span>
+                <div><strong>{{ resumen.nuevos }}</strong><span class="mq-label">Nuevos (30 días)</span></div>
+            </div>
+        </div>
+    </div>
+
+    {# ---------- Filtros ---------- #}
+    <form class="mq-filters" id="mqFilters" method="get">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-6">
+                <label for="id_q" class="form-label">Buscar</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input id="id_q" name="q" type="search" class="form-control" value="{{ consulta }}"
+                           placeholder="Nombre, usuario, correo o cédula" autocomplete="off">
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <label for="id_estado" class="form-label">Estado de la cuenta</label>
+                <select id="id_estado" name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="activos" {% if estado_seleccionado == 'activos' %}selected{% endif %}>Activos</option>
+                    <option value="inactivos" {% if estado_seleccionado == 'inactivos' %}selected{% endif %}>Desactivados</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2">
+                <button class="btn mq-btn-primary flex-grow-1" type="submit"><i class="bi bi-search me-1"></i>Buscar</button>
+                <a class="btn mq-btn-secondary" href="{% url 'cliente_lista' %}" title="Limpiar filtros">
+                    <i class="bi bi-x-lg"></i><span class="visually-hidden">Limpiar</span>
+                </a>
+            </div>
+        </div>
+    </form>
+
+    {% if pagina.paginator.count %}
+        <div class="mq-summary" aria-live="polite">
+            <span><strong>{{ pagina.paginator.count }}</strong> {% if pagina.paginator.count == 1 %}cliente{% else %}clientes{% endif %}</span>
+            {% if consulta %}<span class="mq-chip"><i class="bi bi-search"></i>"{{ consulta }}"</span>{% endif %}
+            {% if estado_seleccionado %}<span class="mq-chip"><i class="bi bi-funnel"></i>{% if estado_seleccionado == 'activos' %}Activos{% else %}Desactivados{% endif %}</span>{% endif %}
+        </div>
+
+        <div class="mq-table-card">
+            <div class="table-responsive">
+                <table class="table mq-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Cliente</th>
+                            <th scope="col">Cédula</th>
+                            <th scope="col">Correo</th>
+                            <th scope="col">Registro</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Autorizaciones</th>
+                            <th scope="col"><span class="visually-hidden">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cliente in pagina %}
+                            <tr data-href="{% url 'cliente_detalle' cliente_id=cliente.pk %}">
+                                <td class="mq-cell-person" data-label="Cliente">
+                                    <div class="mq-person">
+                                        <span class="mq-avatar">{{ cliente.get_username|first|upper }}</span>
+                                        <span>
+                                            <span class="mq-name">{% firstof cliente.get_full_name cliente.get_username %}</span>
+                                            <span class="mq-sub">@{{ cliente.get_username }}</span>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td data-label="Cédula">{% if cliente.perfil_cliente.cedula %}{{ cliente.perfil_cliente.cedula }}{% else %}<span class="mq-none">Sin cédula</span>{% endif %}</td>
+                                <td data-label="Correo">{% if cliente.email %}{{ cliente.email }}{% else %}<span class="mq-none">Sin correo</span>{% endif %}</td>
+                                <td data-label="Registro">{{ cliente.date_joined|date:"d/m/Y" }}</td>
+                                <td data-label="Estado">
+                                    {% if cliente.is_active %}
+                                        <span class="mq-status is-ok">Activo</span>
+                                    {% else %}
+                                        <span class="mq-status is-off">Desactivado</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Autorizaciones">
+                                    {% with a=cliente.autorizacion_cliente %}
+                                        {% if a.puede_editar_perfil or a.puede_solicitar_alquileres %}
+                                            <div class="mq-perms">
+                                                {% if a.puede_editar_perfil %}<span class="mq-chip"><i class="bi bi-pencil"></i>Edita sus datos</span>{% endif %}
+                                                {% if a.puede_solicitar_alquileres %}<span class="mq-chip"><i class="bi bi-file-earmark-text"></i>Solicita alquileres</span>{% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="mq-none">Ninguna</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td data-label="" class="mq-cell-actions text-end">
+                                    <a class="mq-link" href="{% url 'cliente_detalle' cliente_id=cliente.pk %}">Ver detalles</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if pagina.has_other_pages %}
+            <nav class="mq-pager" aria-label="Paginación">
+                {% if pagina.has_previous %}
+                    <a class="btn mq-btn-secondary btn-sm" href="?{% if parametros %}{{ parametros }}&{% endif %}page={{ pagina.previous_page_number }}"><i class="bi bi-chevron-left"></i> Anterior</a>
+                {% else %}
+                    <span class="btn mq-btn-secondary btn-sm disabled"><i class="bi bi-chevron-left"></i> Anterior</span>
+                {% endif %}
+                <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+                {% if pagina.has_next %}
+                    <a class="btn mq-btn-secondary btn-sm" href="?{% if parametros %}{{ parametros }}&{% endif %}page={{ pagina.next_page_number }}">Siguiente <i class="bi bi-chevron-right"></i></a>
+                {% else %}
+                    <span class="btn mq-btn-secondary btn-sm disabled">Siguiente <i class="bi bi-chevron-right"></i></span>
+                {% endif %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <section class="mq-empty">
+            <div class="mq-empty-icon"><i class="bi bi-people"></i></div>
+            <h2>No se encontraron clientes</h2>
+            <p>{% if consulta or estado_seleccionado %}Prueba con otro término o limpia los filtros.{% else %}Todavía no se ha registrado ningún cliente.{% endif %}</p>
+            {% if consulta or estado_seleccionado %}
+                <a class="btn mq-btn-secondary" href="{% url 'cliente_lista' %}">Limpiar filtros</a>
+            {% endif %}
+        </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    // Toda la fila lleva al detalle
+    document.querySelectorAll('.mq-table tbody tr[data-href]').forEach(function (row) {
+        row.addEventListener('click', function (e) {
+            if (e.target.closest('a, button')) return;
+            window.location.href = row.dataset.href;
+        });
+    });
+
+    // Filtrar al cambiar el estado
+    var estado = document.getElementById('id_estado');
+    var form = document.getElementById('mqFilters');
+    if (estado && form) estado.addEventListener('change', function () { form.submit(); });
+})();
+</script>
+{% endblock %}

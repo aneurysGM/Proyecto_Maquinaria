@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.shortcuts import render
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -17,6 +18,10 @@ def home(request):
 def acceso_denegado(request, exception):
     return render(request, "usuarios/acceso_denegado.html", status=403)
 
+@login_required
+def lista_clientes(request):
+    clientes = User.objects.filter(is_staff=False).order_by('-date_joined')
+    return render(request, 'usuarios/cliente_lista.html', {'clientes': clientes})
 
 # Exige una sesión activa para acceder al dashboard.
 @login_required
@@ -26,7 +31,7 @@ def dashboard(request):
     # Estas variables son las que tu base.html y tu dashboard.html necesitan:
     context = {
         'nombre_usuario': usuario.get_full_name() or usuario.username,
-        'rol_usuario': 'Supervisor' if usuario.is_staff else 'Usuario',
+        'rol_usuario': 'Administrador' if usuario.is_staff else 'Usuario',
         'puede_consultar_maquinaria': True,  # Cambia según la lógica de tu app
         'puede_registrar_maquinaria': usuario.is_staff,
     }
@@ -110,3 +115,8 @@ def registro(request):
     else:
         form = RegistroForm()
     return render(request, 'usuarios/registro.html', {'form': form})
+
+@login_required
+def lista_clientes(request):
+    clientes = User.objects.filter(is_staff=False).order_by('-date_joined')
+    return render(request, 'usuarios/cliente_lista.html', {'clientes': clientes})

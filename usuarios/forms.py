@@ -247,3 +247,4 @@ class RegistroForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ('username', 'email')
+        

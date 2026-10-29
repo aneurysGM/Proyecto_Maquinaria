@@ -184,3 +184,5 @@ LOGIN_URL = 'login'
 
 # A dónde ir después de iniciar sesión correctamente.
 LOGIN_REDIRECT_URL = 'dashboard'
+
+'usuarios.roles.contexto_panel',

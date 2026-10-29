@@ -1,0 +1,264 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}{{ nombre_cliente }}{% endblock %}
+{% block page_name %}Detalle del cliente{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mq-wrap { max-width: 1100px; margin: 0 auto; padding: 2rem 0 4rem; color: var(--mq-ink); }
+    .mq-wrap h1, .mq-wrap h2, .mq-wrap h3 {
+        font-family: 'Barlow Semi Condensed', 'Barlow', sans-serif;
+        font-weight: 700;
+        letter-spacing: -.01em;
+    }
+    .mq-back { display: inline-flex; align-items: center; gap: .4rem; color: var(--mq-steel); text-decoration: none; font-weight: 500; margin-bottom: 1rem; }
+    .mq-back:hover { color: var(--mq-ink); }
+
+    .mq-btn-primary { background: var(--mq-amber); border: 0; color: var(--mq-ink); font-weight: 700; padding: .65rem 1.4rem; border-radius: 10px; }
+    .mq-btn-primary:hover, .mq-btn-primary:focus { background: var(--mq-amber-dark); color: var(--mq-ink); }
+    .mq-btn-primary:disabled { background: #e6e9eb; color: #8a96a0; opacity: 1; }
+    .mq-btn-secondary { border: 1px solid #c5ccd2; background: #fff; color: var(--mq-ink); font-weight: 600; padding: .65rem 1.2rem; border-radius: 10px; }
+    .mq-btn-secondary:hover { background: var(--mq-concrete); color: var(--mq-ink); }
+    .mq-btn-danger { border: 1px solid #e3a7a2; background: #fff; color: #b3261e; font-weight: 600; padding: .65rem 1.2rem; border-radius: 10px; }
+    .mq-btn-danger:hover { background: #fde4e1; color: #b3261e; }
+    .mq-btn-danger-solid { background: #b3261e; border: 0; color: #fff; font-weight: 700; padding: .65rem 1.2rem; border-radius: 10px; }
+    .mq-btn-danger-solid:hover { background: #8f1d17; color: #fff; }
+
+    /* Cabecera del cliente */
+    .mq-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem; margin-bottom: 1.5rem; }
+    .mq-hero-avatar { width: 72px; height: 72px; border-radius: 20px; display: grid; place-items: center; background: var(--mq-ink); color: var(--mq-amber); font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 700; font-size: 2rem; flex-shrink: 0; }
+    .mq-hero h1 { font-size: clamp(1.7rem, 4vw, 2.3rem); margin: 0; line-height: 1.05; }
+    .mq-hero p { margin: .2rem 0 0; color: var(--mq-steel); }
+
+    .mq-status { display: inline-flex; align-items: center; gap: .4rem; border-radius: 999px; padding: .25rem .8rem; font-size: .88rem; font-weight: 600; }
+    .mq-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .mq-status.is-ok { background: #e3f4e8; color: #1e7a3c; }
+    .mq-status.is-off { background: #fde4e1; color: #b3261e; }
+
+    /* Tarjetas */
+    .mq-card { background: #fff; border: 1px solid var(--mq-line); border-radius: var(--mq-radius); margin-bottom: 1.25rem; overflow: hidden; }
+    .mq-card-head { display: flex; align-items: center; gap: .85rem; padding: 1rem 1.3rem; border-bottom: 1px solid var(--mq-line); border-left: 5px solid var(--mq-amber); background: #fafbfb; }
+    .mq-card-head .mq-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: var(--mq-ink); color: var(--mq-amber); font-size: 1.1rem; flex-shrink: 0; }
+    .mq-card-head h2 { font-size: 1.25rem; margin: 0; }
+    .mq-card-head p { margin: 0; color: var(--mq-steel); font-size: .9rem; }
+    .mq-card-body { padding: 1.25rem 1.3rem; }
+
+    /* Datos */
+    .mq-dl { margin: 0; }
+    .mq-dl > div { display: flex; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid var(--mq-concrete); }
+    .mq-dl > div:last-child { border-bottom: 0; }
+    .mq-dl dt { color: var(--mq-steel); font-weight: 500; }
+    .mq-dl dd { margin: 0; font-weight: 600; text-align: right; word-break: break-word; }
+    .mq-dl .mq-none { color: #8a96a0; font-style: italic; font-weight: 400; }
+
+    /* Autorizaciones */
+    .mq-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; padding: 1rem 0; border-bottom: 1px solid var(--mq-concrete); cursor: pointer; }
+    .mq-switch-row strong { display: block; }
+    .mq-switch-row span { color: var(--mq-steel); font-size: .92rem; }
+    .mq-switch-row .form-switch { margin: 0; padding: 0; min-height: 0; }
+    .mq-switch-row .form-check-input { width: 3rem; height: 1.6rem; margin: 0; float: none; cursor: pointer; border-color: #aeb8bf; }
+    .mq-switch-row .form-check-input:checked { background-color: var(--mq-amber); border-color: var(--mq-amber-dark); }
+    .mq-switch-row .form-check-input:focus { border-color: var(--mq-amber-dark); box-shadow: 0 0 0 .25rem rgba(242,183,5,.28); }
+    .mq-wrap .form-label { font-weight: 600; font-size: .92rem; margin: 1rem 0 .35rem; }
+    .mq-wrap .form-control { border-color: #c5ccd2; padding: .6rem .8rem; }
+    .mq-wrap .form-control:focus { border-color: var(--mq-amber-dark); box-shadow: 0 0 0 .25rem rgba(242,183,5,.28); }
+    .mq-save-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: 1.25rem; }
+    .mq-hint { color: var(--mq-steel); font-size: .88rem; }
+
+    /* Vacío */
+    .mq-placeholder { text-align: center; padding: 1.5rem 1rem; color: var(--mq-steel); }
+    .mq-placeholder i { font-size: 2rem; color: #a7b2ba; display: block; margin-bottom: .5rem; }
+
+    :focus-visible { outline: 3px solid var(--mq-amber-dark); outline-offset: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mq-wrap">
+
+    <a class="mq-back" href="{% url 'cliente_lista' %}"><i class="bi bi-arrow-left"></i> Volver a clientes</a>
+
+    <header class="mq-hero">
+        <div class="mq-hero-avatar">{{ cliente.get_username|first|upper }}</div>
+        <div>
+            <h1>{{ nombre_cliente }}</h1>
+            <p>@{{ cliente.get_username }}</p>
+        </div>
+        <div class="ms-md-auto">
+            {% if cliente.is_active %}
+                <span class="mq-status is-ok">Cuenta activa</span>
+            {% else %}
+                <span class="mq-status is-off">Cuenta desactivada</span>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if not cliente.is_active %}
+        <div class="alert alert-warning d-flex gap-2 align-items-start" role="alert">
+            <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+            <div>Esta cuenta está desactivada: el cliente no puede iniciar sesión mientras tanto.</div>
+        </div>
+    {% endif %}
+
+    <div class="row g-4">
+
+        {# ---------- Columna izquierda: datos y estado ---------- #}
+        <div class="col-lg-5">
+            <section class="mq-card">
+                <div class="mq-card-head">
+                    <span class="mq-icon"><i class="bi bi-person-vcard"></i></span>
+                    <div><h2>Datos de la cuenta</h2></div>
+                </div>
+                <div class="mq-card-body">
+                    <dl class="mq-dl">
+                        <div><dt>Nombre completo</dt><dd>{% if cliente.get_full_name %}{{ cliente.get_full_name }}{% else %}<span class="mq-none">No registrado</span>{% endif %}</dd></div>
+                        <div><dt>Usuario</dt><dd>{{ cliente.get_username }}</dd></div>
+                        <div><dt>Cédula</dt><dd>{% if cliente.perfil_cliente.cedula %}{{ cliente.perfil_cliente.cedula }}{% else %}<span class="mq-none">No registrada</span>{% endif %}</dd></div>
+                        <div><dt>Correo</dt><dd>{% if cliente.email %}{{ cliente.email }}{% else %}<span class="mq-none">No registrado</span>{% endif %}</dd></div>
+                        <div><dt>Rol</dt><dd>Cliente</dd></div>
+                        <div><dt>Registrado el</dt><dd>{{ cliente.date_joined|date:"d/m/Y H:i" }}</dd></div>
+                        <div><dt>Último acceso</dt><dd>{% if cliente.last_login %}{{ cliente.last_login|date:"d/m/Y H:i" }}{% else %}<span class="mq-none">Nunca ha iniciado sesión</span>{% endif %}</dd></div>
+                        <div><dt>ID de cliente</dt><dd>#{{ cliente.pk }}</dd></div>
+                    </dl>
+                </div>
+            </section>
+
+            <section class="mq-card">
+                <div class="mq-card-head">
+                    <span class="mq-icon"><i class="bi bi-shield-lock"></i></span>
+                    <div><h2>Estado de la cuenta</h2></div>
+                </div>
+                <div class="mq-card-body">
+                    {% if cliente.is_active %}
+                        <p class="mb-3" style="color: var(--mq-steel);">Si la desactivas, el cliente ya no podrá iniciar sesión. Sus datos se conservan y puedes volver a activarla cuando quieras.</p>
+                        <button type="button" class="btn mq-btn-danger" data-bs-toggle="modal" data-bs-target="#modalDesactivar">
+                            <i class="bi bi-person-slash me-1"></i>Desactivar cuenta
+                        </button>
+                    {% else %}
+                        <p class="mb-3" style="color: var(--mq-steel);">Al activarla, el cliente podrá volver a iniciar sesión.</p>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="activar">
+                            <button type="submit" class="btn mq-btn-primary"><i class="bi bi-person-check me-1"></i>Activar cuenta</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+
+        {# ---------- Columna derecha: autorizaciones e historial ---------- #}
+        <div class="col-lg-7">
+            <section class="mq-card">
+                <div class="mq-card-head">
+                    <span class="mq-icon"><i class="bi bi-sliders"></i></span>
+                    <div>
+                        <h2>Autorizaciones</h2>
+                        <p>Decide qué cambios puede hacer este cliente.</p>
+                    </div>
+                </div>
+                <div class="mq-card-body">
+                    <form method="post" id="formAutorizaciones">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="autorizaciones">
+
+                        <label class="mq-switch-row" for="{{ form.puede_editar_perfil.id_for_label }}">
+                            <div>
+                                <strong>Editar sus datos personales</strong>
+                                <span>El cliente podrá actualizar su nombre, correo y demás datos de su perfil.</span>
+                            </div>
+                            <div class="form-check form-switch">{{ form.puede_editar_perfil }}</div>
+                        </label>
+
+                        <label class="mq-switch-row" for="{{ form.puede_solicitar_alquileres.id_for_label }}">
+                            <div>
+                                <strong>Solicitar alquileres</strong>
+                                <span>El cliente podrá enviar solicitudes de alquiler de maquinaria.</span>
+                            </div>
+                            <div class="form-check form-switch">{{ form.puede_solicitar_alquileres }}</div>
+                        </label>
+
+                        <label for="{{ form.notas_internas.id_for_label }}" class="form-label">Notas internas</label>
+                        {{ form.notas_internas }}
+                        {% for error in form.notas_internas.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+
+                        <div class="mq-save-bar">
+                            <span class="mq-hint" id="estadoCambios">
+                                {% if autorizacion.modificado_por %}
+                                    Última modificación: {{ autorizacion.modificado_en|date:"d/m/Y H:i" }} por {% firstof autorizacion.modificado_por.get_full_name autorizacion.modificado_por.get_username %}.
+                                {% else %}
+                                    Aún no se han modificado las autorizaciones.
+                                {% endif %}
+                            </span>
+                            <button type="submit" class="btn mq-btn-primary" id="guardarAutorizaciones" disabled>
+                                <i class="bi bi-check2-circle me-1"></i>Guardar cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <section class="mq-card">
+                <div class="mq-card-head">
+                    <span class="mq-icon"><i class="bi bi-clock-history"></i></span>
+                    <div>
+                        <h2>Historial de alquileres</h2>
+                        <p>Alquileres y pagos de este cliente.</p>
+                    </div>
+                </div>
+                <div class="mq-card-body">
+                    <div class="mq-placeholder">
+                        <i class="bi bi-file-earmark-text"></i>
+                        Aquí aparecerá el historial cuando el módulo de alquileres esté disponible.
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+{# ---------- Confirmar desactivación ---------- #}
+<div class="modal fade" id="modalDesactivar" tabindex="-1" aria-labelledby="modalDesactivarTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0">
+                <h2 class="modal-title fs-4" id="modalDesactivarTitulo" style="font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 700;">¿Desactivar esta cuenta?</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                {{ nombre_cliente }} no podrá iniciar sesión hasta que vuelvas a activar su cuenta.
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn mq-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="post" class="m-0">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="desactivar">
+                    <button type="submit" class="btn mq-btn-danger-solid">Sí, desactivar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    // El botón "Guardar" se activa solo cuando hay cambios
+    var form = document.getElementById('formAutorizaciones');
+    var guardar = document.getElementById('guardarAutorizaciones');
+    var estado = document.getElementById('estadoCambios');
+    if (!form || !guardar) return;
+
+    function firma() { return new URLSearchParams(new FormData(form)).toString(); }
+    var inicial = firma();
+    var textoOriginal = estado.textContent;
+
+    function revisar() {
+        var cambio = firma() !== inicial;
+        guardar.disabled = !cambio;
+        estado.textContent = cambio ? 'Tienes cambios sin guardar.' : textoOriginal;
+    }
+    form.addEventListener('input', revisar);
+    form.addEventListener('change', revisar);
+})();
+</script>
+{% endblock %}
