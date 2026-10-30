@@ -13,6 +13,7 @@ urlpatterns = [
     ),
     # Abre el panel; la vista exige una sesión activa.
     path("dashboard/", views.dashboard, name="dashboard"),
+    
     # Consulta y registro de maquinaria almacenada en SQL Server.
     path("maquinaria/", views.maquinaria_lista, name="maquinaria_lista"),
     path(
@@ -25,6 +26,25 @@ urlpatterns = [
         views.maquinaria_detalle,
         name="maquinaria_detalle",
     ),
+    
+    # --- RUTAS NUEVAS QUE FALTABAN PARA LAS ACCIONES DE MAQUINARIA ---
+    path(
+        "maquinaria/<int:maquinaria_id>/editar/",
+        views.maquinaria_editar,
+        name="maquinaria_editar",
+    ),
+    path(
+        "maquinaria/<int:maquinaria_id>/estado/",
+        views.maquinaria_cambiar_estado,
+        name="maquinaria_cambiar_estado",
+    ),
+    path(
+        "maquinaria/<int:maquinaria_id>/baja/",
+        views.maquinaria_dar_de_baja,
+        name="maquinaria_dar_de_baja",
+    ),
+    # ----------------------------------------------------------------
+
     # Cierra la sesión y redirige al login.
     path(
         "logout/",
