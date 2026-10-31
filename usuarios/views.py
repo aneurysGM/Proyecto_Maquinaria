@@ -6,7 +6,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import MaquinariaForm
+from .forms import MaquinariaForm, MaquinariaEdicionForm
 from .roles import permisos_panel
 from .models import Unidad
 
@@ -176,3 +176,27 @@ def maquinaria_dar_de_baja(request, maquinaria_id):
         
     next_url = request.POST.get('next') or 'maquinaria_lista'
     return redirect(next_url)
+
+@login_required
+def maquinaria_editar(request, maquinaria_id):
+    if not permisos_panel(request.user)["puede_registrar_maquinaria"]:
+        raise PermissionDenied
+    
+    unidad = get_object_or_404(
+        Unidad.objects.select_related("maquinaria"), 
+        pk=maquinaria_id, 
+        activo=True, 
+        maquinaria__activo=True
+    )
+    
+    if request.method == 'POST':
+        # ¡Ojo! Aquí solo va request.POST y unidad=unidad. NUNCA instance=...
+        form = MaquinariaEdicionForm(request.POST, unidad=unidad)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "La maquinaria se actualizó correctamente.")
+            return redirect('maquinaria_detalle', maquinaria_id=unidad.id)
+    else:
+        form = MaquinariaEdicionForm(unidad=unidad)
+    
+    return render(request, 'usuarios/maquinaria_form.html', {'form': form, 'unidad': unidad})

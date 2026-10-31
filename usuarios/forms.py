@@ -116,6 +116,9 @@ class MaquinariaForm(forms.Form):
 
     @transaction.atomic
     def save(self):
+        # -------------------------------------------------------------
+        # SAVE DE CREACIÓN: Crea registros completamente nuevos en BD
+        # -------------------------------------------------------------
         datos = self.cleaned_data
         categoria = Categoria.objects.filter(
             nombre__iexact=datos['categoria']
@@ -156,6 +159,7 @@ class MaquinariaEdicionForm(MaquinariaForm):
     )
 
     def __init__(self, *args, unidad, **kwargs):
+        kwargs.pop('instance', None)  # Seguridad por si acaso
         self.unidad = unidad
         inicial = {
             campo: getattr(unidad.maquinaria, campo)
@@ -181,20 +185,26 @@ class MaquinariaEdicionForm(MaquinariaForm):
 
     @transaction.atomic
     def save(self):
+        # -------------------------------------------------------------
+        # SAVE DE EDICIÓN: Actualiza registros existentes sin duplicarlos
+        # -------------------------------------------------------------
         maquinaria = Maquinaria.objects.select_for_update().get(
             pk=self.unidad.maquinaria_id
         )
         unidad = Unidad.objects.select_for_update().get(pk=self.unidad.pk)
         datos = self.cleaned_data
+        
         categoria = Categoria.objects.filter(
             nombre__iexact=datos['categoria']
         ).first()
         if categoria is None:
             categoria = Categoria.objects.create(nombre=datos['categoria'])
+            
         catalogo = {campo: datos[campo] for campo in self.CAMPOS_CATALOGO}
         catalogo['marca'] = catalogo['marca'] or None
         catalogo['modelo'] = catalogo['modelo'] or None
         catalogo['categoria'] = categoria
+        
         fecha = timezone.now()
         self._guardar_cambios(maquinaria, catalogo, fecha)
         self._guardar_cambios(
@@ -240,11 +250,7 @@ class OperadorForm(forms.Form):
         )
 
 
-# ==========================================
-# Formulario para el Registro de Usuarios Web
-# ==========================================
 class RegistroForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ('username', 'email')
-        
