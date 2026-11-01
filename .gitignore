@@ -30,6 +30,14 @@ db.sqlite3
 db.sqlite3-*
 *.sqlite3
 *.sqlite3-*
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.mdf
+*.ndf
+*.ldf
+*.bacpac
 /data/
 *.bak
 *.backup
@@ -43,6 +51,11 @@ db.sqlite3-*
 /temp/
 /output/
 /sprint3_work/
+/respaldos_locales/
+/backups/
+/respaldos/
+/evidencias_locales/
+/sql/legacy/
 *.tmp
 *.temp
 *.log
@@ -58,3 +71,4 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+node_modules/

@@ -1,0 +1,14 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+<header class="page-heading"><div><h1>Reportes</h1><p>Consulta los registros existentes y descarga los resultados filtrados en Excel (.xlsx).</p></div></header>
+<div class="form-grid">
+{% for tipo, reporte in reportes.items %}
+    <section class="card">
+        <h2>{{ reporte.titulo }}</h2>
+        <p>{{ reporte.descripcion }}</p>
+        <a class="button" href="{% url 'reporte_'|add:tipo %}">Consultar {{ reporte.titulo|lower }}</a>
+    </section>
+{% endfor %}
+</div>
+{% endblock %}

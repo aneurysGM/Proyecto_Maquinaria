@@ -1,0 +1,56 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Reporte de {{ titulo|lower }}{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <div><h1>Reporte de {{ titulo|lower }}</h1><p>{{ descripcion }}</p></div>
+    <a class="button button-secondary" href="{% url 'reporte_indice' %}">Todos los reportes</a>
+</header>
+<form class="card" method="get">
+    <h2>Filtros</h2>
+    {{ form.non_field_errors }}
+    <div class="form-grid">
+        {% for field in form %}
+        <div class="field">
+            {{ field.label_tag }}{{ field }}
+            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+            {{ field.errors }}
+        </div>
+        {% endfor %}
+    </div>
+    <div class="actions">
+        <button class="button" type="submit">Consultar</button>
+        <a class="button button-secondary" href="{{ request.path }}">Limpiar filtros</a>
+    </div>
+</form>
+{% if filtrado_valido %}
+    <div class="actions">
+        <a class="button" href="{{ exportar_excel_url }}">Descargar Excel (.xlsx)</a>
+        <span>{{ filas|length }} registro{{ filas|length|pluralize:'s' }}</span>
+    </div>
+    {% if filas %}
+    <div class="table-wrap card">
+        <table>
+            <caption class="sr-only">{{ titulo }}: resultados de los filtros aplicados</caption>
+            <thead><tr>{% for encabezado in encabezados %}<th scope="col">{{ encabezado }}</th>{% endfor %}</tr></thead>
+            <tbody>
+                {% for fila in filas %}<tr>{% for celda in fila %}<td>{{ celda }}</td>{% endfor %}</tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <section class="card empty-state"><h2>Sin resultados</h2><p>No hay registros que coincidan con los filtros aplicados.</p></section>
+    {% endif %}
+    {% if total_costo != None %}
+    <section class="card"><h2>Total de costos de mantenimiento</h2><p>{{ total_costo|floatformat:2 }}</p><p>Corresponde únicamente a los registros filtrados.</p></section>
+    {% endif %}
+{% else %}
+    {% if csv_retirado %}
+    <section class="card">
+        <p>Este formato ya no está disponible. Consulta el reporte para descargarlo en Excel (.xlsx).</p>
+        <a class="button" href="{{ volver_url }}">Volver al reporte conservando los filtros</a>
+    </section>
+    {% else %}
+    <section class="card"><p>Revisa los filtros indicados. No se generaron resultados ni una descarga.</p></section>
+    {% endif %}
+{% endif %}
+{% endblock %}

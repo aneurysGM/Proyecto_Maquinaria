@@ -60,6 +60,9 @@
                         <td><span class="status">{{ maquinaria.get_estado_display }}</span></td>
                         <td>{{ maquinaria.ubicacion_actual|default:"No especificada" }}</td>
                         <td class="maquinaria-acciones"><a href="{% url 'maquinaria_detalle' maquinaria_id=maquinaria.id %}">Ver detalles</a>
+                            {% if puede_solicitar_alquiler and maquinaria.estado == 'Disponible' %}
+                            <a href="{% url 'solicitud_registrar' unidad_id=maquinaria.id %}">Solicitar alquiler</a>
+                            {% endif %}
                             {% if puede_editar_maquinaria %}
                             <a href="{% url 'maquinaria_editar' maquinaria_id=maquinaria.id %}">Editar</a>
                             {% endif %}

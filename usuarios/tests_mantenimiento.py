@@ -230,6 +230,8 @@ class MantenimientoTests(TestCase):
                         **{'unidad_id': self.unidad.pk, 'tecnico_id': self.tecnico.pk, 'fecha': '2026-10-27',
                            'tipo': 'Preventivo', 'costo': 0, 'descripcion': 'Prueba', **cambios}
                     )
+                    # SQLite difiere las FK; SQL Server las comprueba al insertar.
+                    connection.check_constraints(table_names=[Mantenimiento._meta.db_table])
         registro = Mantenimiento(unidad=self.unidad, fecha='2026-10-27', tipo='Preventivo', costo=0)
         with self.assertRaises(ValidationError) as error:
             registro.full_clean()
@@ -242,22 +244,21 @@ class MantenimientoTests(TestCase):
         self.assertContains(self.client.get(reverse('dashboard')), 'Panel de Técnico')
         for url in (
             reverse('maquinaria_registrar'), reverse('maquinaria_editar', args=[self.unidad.pk]),
-            reverse('operador_registrar'), reverse('operador_lista'), reverse('operador_detalle', args=[999999]),
         ):
             for metodo in (self.client.get, self.client.post):
                 self.assertEqual(metodo(url, self.datos).status_code, 403)
         panel = self.client.get(reverse('dashboard'))
         self.assertContains(panel, self.url)
-        self.assertNotContains(panel, reverse('operador_lista'))
+        self.assertNotContains(panel, '/operadores/')
         self.assertNotContains(panel, reverse('maquinaria_registrar'))
         self.assertRedirects(self.client.get(reverse('admin:index')), '/admin/login/?next=/admin/')
 
     def test_roles_no_autorizados_reciben_403_en_get_y_post_directos(self):
-        supervisor = get_user_model().objects.create_user(username='supervisor_hu07')
-        supervisor.groups.add(Group.objects.get_or_create(name='Supervisor')[0])
+        cliente_usuario = get_user_model().objects.create_user(username='cliente_usuario_hu07')
+        cliente_usuario.groups.add(Group.objects.get_or_create(name='Cliente')[0])
         sin_rol = get_user_model().objects.create_user(username='sinrol_hu07')
         staff = get_user_model().objects.create_user(username='staff_hu07', is_staff=True)
-        for usuario in (supervisor, sin_rol, staff):
+        for usuario in (cliente_usuario, sin_rol, staff):
             self.client.force_login(usuario)
             for url in (self.url, self.historial, reverse('mantenimiento_lista'), reverse('mantenimiento_historial', args=[999999])):
                 for metodo in (self.client.get, self.client.post):
@@ -312,12 +313,12 @@ class TecnicoComandoTests(TestCase):
         usuario.set_password('ClaveExistente123!')
         usuario.is_active = False
         usuario.save()
-        usuario.groups.add(Group.objects.get_or_create(name='Supervisor')[0])
+        usuario.groups.add(Group.objects.get_or_create(name='Cliente')[0])
         call_command('crear_tecnico', usuario.username, stdout=StringIO())
         usuario.refresh_from_db()
         self.assertTrue(usuario.check_password('ClaveExistente123!'))
         self.assertFalse(usuario.is_active)
-        self.assertEqual(set(usuario.groups.values_list('name', flat=True)), {TECNICO, 'Supervisor'})
+        self.assertEqual(set(usuario.groups.values_list('name', flat=True)), {TECNICO})
 
     def test_no_modifica_cuentas_administrativas(self):
         for cambios in ({'is_superuser': True}, {'is_staff': True}):

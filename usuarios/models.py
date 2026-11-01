@@ -2,10 +2,9 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models.functions import Replace
 from django.utils import timezone
 
-from .validators import ESPACIOS_CEDULA, anio_actual, validar_cedula
+from .validators import anio_actual
 
 
 class Categoria(models.Model):
@@ -177,6 +176,10 @@ class Unidad(models.Model):
             raise ValidationError({
                 'ubicacion_actual': 'La ubicación actual es obligatoria en registros nuevos.'
             })
+        if self.pk and self.estado != 'Alquilado' and self.solicitudes_alquiler.filter(
+            fecha_salida__isnull=False, fecha_retorno__isnull=True,
+        ).exists():
+            raise ValidationError({'estado': 'La unidad tiene una entrega pendiente. Registra su retorno para cambiar el estado.'})
 
     @property
     def codigo(self):
@@ -218,51 +221,6 @@ class Unidad(models.Model):
     def deposito_garantia(self):
         return self.maquinaria.deposito_garantia
 
-
-def expresion_cedula_normalizada():
-    expresion = models.F('cedula')
-    for separador in '-' + ESPACIOS_CEDULA:
-        expresion = Replace(expresion, models.Value(separador), models.Value(''))
-    return expresion
-
-
-class Operador(models.Model):
-    """Registro del negocio sobre la tabla legacy; no es un usuario de acceso."""
-
-    id = models.AutoField(primary_key=True, db_column='IdOperador')
-    cedula = models.CharField(max_length=20, unique=True, db_column='Cedula', validators=[validar_cedula])
-    cedula_normalizada = models.GeneratedField(
-        expression=expresion_cedula_normalizada(),
-        output_field=models.CharField(max_length=20), db_persist=True,
-        unique=True, db_column='CedulaNormalizada',
-    )
-    nombre = models.CharField(max_length=80, db_column='Nombre')
-    apellido = models.CharField(max_length=80, blank=True, default='', db_column='Apellido')
-    telefono = models.CharField(max_length=20, blank=True, null=True, db_column='Telefono')
-    email = models.EmailField(max_length=100, blank=True, null=True, db_column='Email')
-    direccion = models.CharField(max_length=200, blank=True, null=True, db_column='Direccion')
-    fecha_nacimiento = models.DateField(blank=True, null=True, db_column='FechaNacimiento')
-    fecha_contratacion = models.DateField(blank=True, null=True, db_column='FechaContratacion')
-    numero_licencia = models.CharField(max_length=30, blank=True, null=True, db_column='NumeroLicencia')
-    tipo_licencia = models.CharField(max_length=10, blank=True, null=True, db_column='CategoriaLicencia')
-    fecha_vencimiento = models.DateField(blank=True, null=True, db_column='FechaVencimientoLicencia')
-    estado = models.CharField(max_length=20, default='Activo', db_column='Estado')
-    fecha_creacion = models.DateTimeField(default=timezone.now, editable=False, db_column='FechaCreacion')
-
-    class Meta:
-        db_table = 'Operador'
-        ordering = ('nombre', 'apellido', 'id')
-
-    @property
-    def nombre_completo(self):
-        return f'{self.nombre} {self.apellido}'.strip()
-
-    @property
-    def activo(self):
-        return self.estado == 'Activo'
-
-    def __str__(self):
-        return self.nombre_completo
 
 
 class Mantenimiento(models.Model):
@@ -309,3 +267,59 @@ class Mantenimiento(models.Model):
 
     def __str__(self):
         return f'{self.unidad} · {self.fecha} · {self.tipo}'
+
+
+class SolicitudAlquiler(models.Model):
+    ESTADOS = [('Pendiente', 'Pendiente'), ('Aprobada', 'Aprobada'), ('Rechazada', 'Rechazada')]
+    cliente = models.ForeignKey(settings.AUTH_USER_MODEL, models.PROTECT, related_name='solicitudes_alquiler')
+    unidad = models.ForeignKey(Unidad, models.PROTECT, related_name='solicitudes_alquiler')
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField()
+    comentario = models.CharField(max_length=500, blank=True)
+    estado = models.CharField(max_length=10, choices=ESTADOS, default='Pendiente', editable=False)
+    fecha_creacion = models.DateTimeField(default=timezone.now, editable=False)
+    revisado_por = models.ForeignKey(settings.AUTH_USER_MODEL, models.PROTECT, null=True, blank=True, related_name='solicitudes_revisadas', editable=False)
+    fecha_revision = models.DateTimeField(null=True, blank=True, editable=False)
+    fecha_salida = models.DateTimeField(null=True, blank=True, editable=False)
+    entregado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, models.PROTECT, null=True, blank=True, editable=False,
+        related_name='salidas_registradas',
+    )
+    fecha_retorno = models.DateTimeField(null=True, blank=True, editable=False)
+    recibido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, models.PROTECT, null=True, blank=True, editable=False,
+        related_name='retornos_registrados',
+    )
+
+    @property
+    def estado_entrega(self):
+        if self.fecha_retorno is not None:
+            return 'Devuelta'
+        return 'Pendiente de devolución' if self.fecha_salida is not None else 'Sin entregar'
+
+    class Meta:
+        ordering = ('-fecha_creacion', '-id')
+        constraints = [
+            models.CheckConstraint(condition=models.Q(fecha_fin__gte=models.F('fecha_inicio')), name='CK_Solicitud_Fechas'),
+            models.CheckConstraint(condition=models.Q(estado__in=['Pendiente', 'Aprobada', 'Rechazada']), name='CK_Solicitud_Estado'),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(fecha_salida__isnull=True, entregado_por__isnull=True)
+                    | models.Q(fecha_salida__isnull=False, entregado_por__isnull=False, estado='Aprobada')
+                ), name='CK_Solicitud_Salida',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(fecha_retorno__isnull=True, recibido_por__isnull=True)
+                    | models.Q(
+                        fecha_retorno__isnull=False, recibido_por__isnull=False,
+                        fecha_salida__isnull=False, fecha_retorno__gte=models.F('fecha_salida'),
+                    )
+                ), name='CK_Solicitud_Retorno',
+            ),
+            models.UniqueConstraint(
+                fields=['unidad'],
+                condition=models.Q(fecha_salida__isnull=False, fecha_retorno__isnull=True),
+                name='UQ_Entrega_Unidad_Pendiente',
+            ),
+        ]

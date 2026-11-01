@@ -2,6 +2,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 
+# Compatibilidad con la migración histórica 0006; no existe un módulo activo de operadores.
 # Espacios reconocidos por str.isspace(), también eliminados en SQL Server.
 ESPACIOS_CEDULA = ' \t\n\r\v\f\x1c\x1d\x1e\x1f\x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000'
 

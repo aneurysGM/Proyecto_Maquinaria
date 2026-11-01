@@ -15,7 +15,7 @@
         {% if puede_registrar_maquinaria %}
             <p>Registra equipos y consulta el catálogo en SQL Server.</p>
         {% else %}
-            <p>Consulta el catálogo, filtra por estado y revisa los detalles de los equipos. Tu acceso es de solo consulta.</p>
+            <p>Consulta el catálogo, filtra por estado y revisa los detalles de los equipos.</p>
         {% endif %}
         <div class="actions">
             <a class="button" href="{% url 'maquinaria_lista' %}">Consultar maquinaria</a>
@@ -27,16 +27,7 @@
     {% else %}
         <section class="card"><p>Tu cuenta todavía no tiene un rol asignado. Solicita acceso al administrador.</p></section>
     {% endif %}
-    {% if puede_registrar_operador %}
-    <section class="card">
-        <h2>Operadores</h2>
-        <p>Registra operadores y consulta sus datos de contacto y licencia.</p>
-        <div class="actions">
-            <a class="button" href="{% url 'operador_registrar' %}">Registrar operador</a>
-            <a class="button button-secondary" href="{% url 'operador_lista' %}">Consultar operadores</a>
-        </div>
-    </section>
-    {% endif %}
+
     {% if puede_registrar_mantenimiento %}
     <section class="card">
         <h2>Mantenimientos</h2>
@@ -45,6 +36,28 @@
             <a class="button" href="{% url 'mantenimiento_registrar' %}">Registrar mantenimiento</a>
             <a class="button button-secondary" href="{% url 'mantenimiento_lista' %}">Consultar mantenimientos</a>
         </div>
+    </section>
+    {% endif %}
+    {% if puede_consultar_solicitudes %}
+    <section class="card"><h2>Alquileres</h2>
+    <p>{% if puede_gestionar_solicitudes %}Revisa y aprueba o rechaza las solicitudes de los clientes.{% else %}Solicita una unidad disponible desde el catálogo y consulta el estado de tus solicitudes.{% endif %}</p>
+    <a class="button" href="{% url 'solicitud_lista' %}">{% if puede_gestionar_solicitudes %}Gestionar solicitudes{% else %}Mis solicitudes{% endif %}</a></section>
+    {% endif %}
+    {% if puede_gestionar_entregas %}
+    <section class="card">
+        <h2>Salidas y retornos</h2>
+        <p>Registra salidas desde las solicitudes aprobadas y consulta las entregas pendientes y su historial.</p>
+        <div class="actions">
+            <a class="button" href="{% url 'entrega_lista' %}">Pendientes de devolución</a>
+            <a class="button button-secondary" href="{% url 'entrega_lista' %}?estado=todas">Historial de entregas</a>
+        </div>
+    </section>
+    {% endif %}
+    {% if puede_ver_reportes %}
+    <section class="card">
+        <h2>Reportes</h2>
+        <p>Consulta maquinaria, solicitudes, salidas y retornos y mantenimientos. Filtra los resultados y descárgalos en Excel (.xlsx).</p>
+        <a class="button" href="{% url 'reporte_indice' %}">Consultar reportes</a>
     </section>
     {% endif %}
 {% endblock %}

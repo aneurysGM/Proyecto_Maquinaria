@@ -1,12 +1,14 @@
+from zoneinfo import ZoneInfo
+
 from django import forms
 from django.core.validators import MaxValueValidator
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Categoria, Mantenimiento, Maquinaria, Operador, Unidad
+from .models import Categoria, Mantenimiento, Maquinaria, SolicitudAlquiler, Unidad
 from .roles import permisos_panel
-from .validators import anio_actual, normalizar_cedula, validar_cedula
+from .validators import anio_actual
 
 
 class MaquinariaForm(forms.Form):
@@ -187,6 +189,10 @@ class MaquinariaEdicionForm(MaquinariaForm):
         )
         unidad = Unidad.objects.select_for_update().get(pk=self.unidad.pk)
         datos = self.cleaned_data
+        if datos['estado'] != 'Alquilado' and unidad.solicitudes_alquiler.filter(
+            fecha_salida__isnull=False, fecha_retorno__isnull=True,
+        ).exists():
+            raise ValidationError('La unidad tiene una entrega pendiente. Registra su retorno para cambiar el estado.')
         categoria = Categoria.objects.filter(
             nombre__iexact=datos['categoria']
         ).first()
@@ -253,40 +259,61 @@ class MantenimientoForm(forms.Form):
         return mantenimiento
 
 
-class OperadorForm(forms.Form):
-    nombre_completo = forms.CharField(label='Nombre completo', max_length=161, strip=True)
-    cedula = forms.CharField(label='Cédula', max_length=60, validators=[validar_cedula])
-    telefono = forms.CharField(label='Teléfono', max_length=20, strip=True)
-    direccion = forms.CharField(label='Dirección', max_length=200, strip=True)
-    tipo_licencia = forms.CharField(label='Tipo de licencia', max_length=10, strip=True)
-    fecha_vencimiento = forms.DateField(
-        label='Fecha de vencimiento', input_formats=('%Y-%m-%d',),
-        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
-    )
+class SolicitudAlquilerForm(forms.Form):
+    fecha_inicio = forms.DateField(label='Fecha de inicio', widget=forms.DateInput(attrs={'type': 'date'}))
+    fecha_fin = forms.DateField(label='Fecha de fin', widget=forms.DateInput(attrs={'type': 'date'}))
+    comentario = forms.CharField(label='Comentario', max_length=500, required=False, widget=forms.Textarea(attrs={'rows': 3}))
 
-    def clean_nombre_completo(self):
-        nombre = ' '.join(self.cleaned_data['nombre_completo'].split())
-        # Conservar el texto completo sin inferir cuáles palabras son apellidos.
-        # La tabla existente dispone de dos columnas de 80 caracteres.
-        corte = len(nombre) if len(nombre) <= 80 else nombre.rfind(' ', 0, 81)
-        if corte < 1 or len(nombre[corte:].strip()) > 80:
-            raise forms.ValidationError('El nombre debe caber en dos partes de hasta 80 caracteres.')
-        self.partes_nombre = (nombre[:corte], nombre[corte:].strip())
-        return nombre
-
-    def clean_cedula(self):
-        cedula = normalizar_cedula(self.cleaned_data['cedula'])
-        if Operador.objects.filter(cedula_normalizada=cedula).exists():
-            raise forms.ValidationError('Ya existe un operador con esta cédula.')
-        return cedula
+    def clean(self):
+        datos = super().clean()
+        inicio, fin = datos.get('fecha_inicio'), datos.get('fecha_fin')
+        if inicio and inicio < timezone.localdate():
+            self.add_error('fecha_inicio', 'La fecha de inicio no puede estar en el pasado.')
+        if inicio and fin and fin < inicio:
+            self.add_error('fecha_fin', 'La fecha de fin debe ser igual o posterior al inicio.')
+        return datos
 
     @transaction.atomic
-    def save(self):
+    def save(self, *, cliente, unidad):
+        if not permisos_panel(cliente)['puede_solicitar_alquiler']:
+            raise PermissionDenied
+        unidad = Unidad.objects.select_for_update().select_related('maquinaria').get(pk=unidad.pk)
+        if not unidad.activo or not unidad.maquinaria.activo or unidad.estado != 'Disponible':
+            raise ValidationError('Esta unidad ya no está disponible para solicitar alquiler.')
         datos = self.cleaned_data
-        nombre, apellido = self.partes_nombre
-        return Operador.objects.create(
-            nombre=nombre, apellido=apellido, cedula=datos['cedula'],
-            telefono=datos['telefono'], direccion=datos['direccion'],
-            tipo_licencia=datos['tipo_licencia'], fecha_vencimiento=datos['fecha_vencimiento'],
-            estado='Activo',
-        )
+        if SolicitudAlquiler.objects.filter(unidad=unidad, estado='Aprobada', fecha_inicio__lte=datos['fecha_fin'], fecha_fin__gte=datos['fecha_inicio']).exists():
+            raise ValidationError('La unidad ya tiene una solicitud aprobada para esas fechas.')
+        if SolicitudAlquiler.objects.filter(unidad=unidad, cliente=cliente, estado='Pendiente', fecha_inicio=datos['fecha_inicio'], fecha_fin=datos['fecha_fin']).exists():
+            raise ValidationError('Ya tienes una solicitud pendiente para esta unidad y estas fechas.')
+        solicitud = SolicitudAlquiler(cliente=cliente, unidad=unidad, **datos)
+        solicitud.full_clean()
+        solicitud.save()
+        return solicitud
+
+
+class FechaMovimientoField(forms.DateTimeField):
+    """datetime-local usa la zona del negocio sin cambiar la configuración global."""
+    zona = ZoneInfo('America/Santo_Domingo')
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('widget', forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M', attrs={'type': 'datetime-local'},
+        ))
+        kwargs.setdefault('input_formats', ('%Y-%m-%dT%H:%M', '%Y-%m-%dT%H:%M:%S'))
+        super().__init__(*args, **kwargs)
+
+    def to_python(self, value):
+        with timezone.override(self.zona):
+            return super().to_python(value)
+
+    def prepare_value(self, value):
+        with timezone.override(self.zona):
+            return super().prepare_value(value)
+
+
+class SalidaMaquinariaForm(forms.Form):
+    fecha_salida = FechaMovimientoField(label='Fecha y hora de salida (Santo Domingo)', initial=timezone.now)
+
+
+class RetornoMaquinariaForm(forms.Form):
+    fecha_retorno = FechaMovimientoField(label='Fecha y hora de retorno (Santo Domingo)', initial=timezone.now)

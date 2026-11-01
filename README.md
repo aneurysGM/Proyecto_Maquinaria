@@ -1,9 +1,36 @@
 # Sistema de alquiler de equipos
 
-Proyecto Django con inicio de sesión, panel por rol, registro, edición y consulta
-de maquinaria, registro y consulta de operadores e historial de mantenimiento
-por unidad física. La aplicación usa SQL Server para cuentas, roles, sesiones,
-catálogo, unidades físicas, operadores y mantenimientos.
+Para obtener esta entrega desde GitHub y actualizar una instalación existente,
+consulta la [guía de actualización e integración](docs/actualizacion-e-integracion.md).
+Incluye el respaldo previo, las migraciones y los pasos de comprobación y arranque.
+
+Proyecto Django con inicio de sesión y tres roles: Administrador, Cliente y
+Técnico de mantenimiento. Incluye registro, edición y consulta de maquinaria,
+mantenimiento por unidad y solicitudes de alquiler que revisa el administrador.
+HU-09 añade salida y retorno físicos desde solicitudes aprobadas, con historial
+y responsables administrativos. Ver [HU-09: salida y retorno](docs/hu09-salida-retorno.md).
+HU-10 incorpora [reportes administrativos](docs/hu10-reportes.md) de maquinaria,
+solicitudes, salidas/retornos y mantenimiento, con filtros y descargas Excel
+(.xlsx). El XLSX conserva columnas, identificadores como texto, fechas,
+costos, filtros y encabezado inmovilizado.
+La aplicación utiliza SQL Server. El módulo de operadores está retirado.
+
+Actualización del 30 de octubre de 2026: las migraciones `0008`–`0010`
+conservan el trabajo local de roles y solicitudes; `0011` completa la retirada
+física de operadores, con respaldo SQL Server verificado antes del borrado.
+Ver [cuentas y roles](docs/cuentas-y-roles.md) y
+[retirada de operadores](docs/retirada-operadores.md).
+HU-05 y HU-06 quedan retiradas, sin redactar todavía sus reemplazos.
+
+Sprint 4, HU-09: la migración `0012_salida_retorno_maquinaria` amplía la solicitud
+existente con fechas y responsables de entrega y devolución, sin duplicar tablas
+de alquiler. HU-10 reutiliza esos datos y no requiere cambios de esquema ni
+migraciones nuevas. Antes de aplicar HU-09 en otra instalación:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py respaldar_sqlserver --motivo pre_hu09
+.\.venv\Scripts\python.exe manage.py migrate --noinput
+```
 
 ## Requisitos
 
@@ -61,8 +88,10 @@ Antes de cambiar una base existente, ejecuta el inventario de solo lectura:
 sqlcmd -S ".\SQLEXPRESS" -E -C -i sql\00_inspeccionar_base.sql
 ```
 
-Haz una copia desde SQL Server Management Studio o con `BACKUP DATABASE`. No
-guardes archivos `.bak` en Git. Después aplica las migraciones. `--fake-initial`
+Haz y verifica una copia desde SQL Server Management Studio o con
+`BACKUP DATABASE ... WITH COPY_ONLY, CHECKSUM` y
+`RESTORE VERIFYONLY ... WITH CHECKSUM, STOP_ON_ERROR`. No guardes archivos
+`.bak` en Git. Después aplica las migraciones. `--fake-initial`
 reconoce `Categoria`, `Maquinaria` y `Unidad` si ya venían del script original;
 en una base nueva las crea.
 
@@ -71,6 +100,12 @@ en una base nueva las crea.
 ```
 
 Las migraciones de Django son la fuente de verdad para el módulo implementado.
+La migración 0011 necesita permisos para inspeccionar todas las definiciones
+SQL, crear un respaldo en el directorio de la instancia y verificarlo. Si falla
+el respaldo o encuentra dependencias de operadores, se detiene sin borrar la
+tabla. Detén las escrituras durante la migración. Consulta el procedimiento
+detallado antes de aplicarla en otra instalación.
+
 Los archivos siguientes conservan y corrigen por separado los objetos futuros
 del script del compañero:
 
@@ -95,7 +130,8 @@ conexión SQL Server activa, ejecuta:
 El comando:
 
 - copia usuarios sin recalcular sus contraseñas: conserva exactamente el hash;
-- copia grupos, membresías y permisos compatibles;
+- copia grupos, membresías y permisos compatibles, excluyendo Supervisor,
+  Operador y los permisos del modelo retirado;
 - convierte el JSON en `Categoria`, `Maquinaria` y `Unidad`;
 - no actualiza usuarios, códigos o números de serie que ya existan;
 - verifica al final que usuarios, hashes, roles y unidades estén presentes;
@@ -105,23 +141,23 @@ Se pueden indicar rutas distintas con `--sqlite` y `--json`.
 
 ## Roles y acceso
 
-| Rol activo | Consultar maquinaria | Registrar / editar maquinaria | Operadores | Registrar / consultar mantenimientos | Django Admin |
-| --- | --- | --- | --- | --- | --- |
-| Administrador (`is_superuser`) | Sí | Sí | Sí | Sí | Sí, con `is_staff` |
-| Supervisor (grupo `Supervisor`) | Sí | No | No | No | No |
-| Técnico (grupo `Técnico`) | Sí | No | No | Sí | No |
-| Sin rol | No | No | No | No | No |
+Los roles vigentes y los comandos de creación están documentados en
+[cuentas y roles](docs/cuentas-y-roles.md). El administrador conserva todas las
+funciones de maquinaria y mantenimiento y gestiona las solicitudes de clientes.
+También registra salidas, retornos y consulta el historial de entregas. Cliente
+y Técnico no tienen acceso a ese flujo, ni mediante direcciones directas.
+La sección Reportes también es exclusiva del Administrador, tanto para consultar
+como para descargar Excel (.xlsx). El único total monetario es el costo real de los
+mantenimientos filtrados; no se calculan ingresos, pagos o importes de alquiler.
+Operador y Supervisor no habilitan ningún permiso de negocio.
 
-Las vistas comprueban el rol en el servidor, antes de consultar o escribir.
-Un Supervisor recibe HTTP 403 aunque acceda directamente a las direcciones
-de registro o edición de maquinaria, operadores o mantenimiento, o envíe un POST.
-`is_staff` por sí solo no concede permisos en las pantallas del negocio.
-
-Para crear cuentas nuevas:
+Las migraciones conservan las cuentas existentes. Una cuenta que solo pertenecía
+a Supervisor queda sin rol hasta que el administrador le asigne uno válido;
+no se transforma automáticamente en un cliente.
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py createsuperuser
-.\.venv\Scripts\python.exe manage.py crear_supervisor luis --nombre "Luis"
+.\.venv\Scripts\python.exe manage.py crear_cliente luis --nombre "Luis"
 .\.venv\Scripts\python.exe manage.py changepassword luis
 ```
 
@@ -147,7 +183,7 @@ El registro de una unidad exige año de fabricación (entero desde 1 hasta el a�
 actual) y ubicación actual (hasta 200 caracteres, sin aceptar solo espacios).
 El año se valida al recibir el formulario y al validar el modelo. La ubicación
 también se exige al validar un modelo nuevo, incluido el formulario de Django
-Admin. El administrador registra y consulta; el supervisor solo consulta.
+Admin. El Administrador registra y consulta; Cliente y Técnico pueden consultar.
 
 Se reutiliza `Unidad.UbicacionActual`. La migración
 `usuarios/0004_anio_fabricacion_unidad` añade `Unidad.AnioFabricacion`, nullable
@@ -170,8 +206,20 @@ anteriores, conservando los datos existentes y los valores desconocidos nulos.
 ## Archivos locales y Git
 
 `.gitignore` excluye `config.local.json`, `.env`, claves, SQLite, `data/`,
-respaldos, copias SQL originales, `tmp/`, `output/`, el entorno virtual y cachés.
+respaldos, copias SQL originales, `tmp/`, `output/`, `sprint3_work/`,
+`respaldos_locales/`, `evidencias_locales/`, `sql/legacy/`, el entorno virtual
+y cachés.
 No uses `git add -f` con esos archivos.
+
+La [guía de organización](docs/organizacion-del-proyecto.md) distingue aplicación,
+documentos, fuentes, evidencias y respaldos; `output`, `scripts` y `sprint3_work`
+permanecen separados. Las utilidades compartidas están documentadas en
+[scripts/README.md](scripts/README.md). Para comprobar Django y ejecutar toda
+la suite con un nombre de base temporal único:
+
+```powershell
+.\.venv\Scripts\python.exe -B scripts/verificar_proyecto.py
+```
 
 Antes de compartir cambios:
 
@@ -191,7 +239,7 @@ El administrador puede abrir **Editar** desde el listado o **Editar maquinaria**
 desde el detalle. El formulario carga los datos actuales y valida los mismos
 campos obligatorios que el registro. El código de catálogo y el número de serie
 pueden conservar sus valores propios, pero no tomar los de otro registro.
-El supervisor y los usuarios sin rol reciben HTTP 403 ante GET y POST de edición.
+Cliente, Técnico y los usuarios sin rol reciben HTTP 403 ante GET y POST de edición.
 
 Los datos del catálogo se comparten entre todas sus unidades. El formulario
 advierte este alcance. La serie, ubicación, estado, año y horas de uso pertenecen
@@ -210,14 +258,14 @@ crear y verificar una copia de seguridad. Después ejecutar:
 
     .\.venv\Scripts\python.exe manage.py showmigrations usuarios --plan
     .\.venv\Scripts\python.exe manage.py sqlmigrate usuarios 0005
-    .\.venv\Scripts\python.exe manage.py migrate usuarios 0005_fechas_modificacion_maquinaria_unidad --noinput
+    .\.venv\Scripts\python.exe manage.py migrate --noinput
     .\.venv\Scripts\python.exe manage.py test usuarios --noinput
     .\.venv\Scripts\python.exe manage.py runserver
 
 Prueba manual: entrar como administrador, abrir una unidad y editar su ubicación
 y una tarifa. Guardar, comprobar el mensaje de éxito y las fechas, y volver a
 consultar para verificar la persistencia. Intentar guardar un campo obligatorio
-vacío y una serie de otra unidad. Por último, entrar como supervisor y comprobar
+vacío y una serie de otra unidad. Por último, entrar como Cliente o Técnico y comprobar
 que la dirección de edición devuelve acceso denegado.
 
 Validación del 26 de octubre de 2026: después de las 26 pruebas iniciales con
@@ -240,96 +288,18 @@ triggers en las tablas de maquinaria de la base revisada. Esta ejecución no
 incluye pruebas de concurrencia entre editores ni una revisión visual en navegador;
 la prueba manual descrita arriba queda como comprobación de aceptación.
 
-## HU-05: registrar operador
+## HU-05 y HU-06 retiradas
 
-El administrador activo (`is_superuser`) puede abrir **Registrar operador** en el
-panel o **Operadores** en la navegación. Registro, listado y detalle comprueban
-el rol en el servidor. Supervisor, personal `is_staff` sin ser superusuario y
-usuarios sin rol reciben HTTP 403; las solicitudes anónimas van al inicio de
-sesión. Un operador es un registro del negocio: no se crea una cuenta Django.
-
-El formulario exige nombre completo, cédula, teléfono, dirección, tipo de
-licencia y fecha de vencimiento. Rechaza valores vacíos o solo con espacios,
-fechas inválidas y valores que excedan las columnas existentes. La licencia es
-texto de hasta 10 caracteres; no se impone un catálogo de tipos ni una regla de
-vigencia para asignaciones, que corresponde definir en la HU-06.
-
-Se reutiliza `dbo.Operador`, encontrada vacía en la base revisada. La migración
-`0006_integrar_operador` incorpora su modelo a Django y añade únicamente
-`CedulaNormalizada`, una columna calculada persistida con un índice único.
-Elimina guiones y espacios de la clave de comparación; los registros web nuevos
-guardan la cédula como dígitos. La comprobación incluye operadores inactivos y
-la restricción de SQL Server protege también inserciones fuera del formulario.
-Las cédulas se validan como 1 a 20 dígitos, sin asumir un algoritmo nacional de
-verificación no solicitado.
-
-La tabla legacy conserva `Nombre` y `Apellido` (80 caracteres cada uno). El
-formulario recibe un nombre completo y lo almacena sin truncarlo: usa `Nombre`
-si cabe y divide nombres largos en un espacio entre ambas columnas. No infiere
-apellidos; al consultar concatena ambas partes. Los nombres y apellidos de
-registros previos y las demás columnas legacy se conservan. Los datos de contacto
-y licencia siguen admitiendo `NULL` en el esquema para respetar registros antiguos,
-pero son obligatorios para los registros nuevos de esta HU.
-
-Los operadores nuevos reciben `Estado='Activo'` y fecha de creación. El detalle
-y el listado muestran el estado; `operador.activo` y
-`Operador.objects.filter(estado='Activo')` permiten identificar activos para la
-futura HU-06. Todavía no se crean asignaciones ni relaciones con maquinaria.
-
-En una instalación sin tabla de operadores, la misma migración la crea. Si hay
-cédulas antiguas que coinciden al normalizar o quedan vacías, la migración se
-detiene sin borrar filas para permitir su revisión. La adopción es irreversible
-mediante `migrate` hacia atrás: no elimina una tabla que puede contener datos del
-negocio. Antes de aplicarla en otra base, inspeccionar el esquema y verificar un
-respaldo; después ejecutar:
-
-```powershell
-.\.venv\Scripts\python.exe manage.py migrate usuarios 0006_integrar_operador --plan
-.\.venv\Scripts\python.exe manage.py migrate usuarios 0006_integrar_operador --noinput
-.\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
-.\.venv\Scripts\python.exe manage.py test usuarios --noinput
-```
-
-Validación del 26 de octubre de 2026: antes de aplicar 0006 en `AlquilerEquipos`,
-se creó un backup `COPY_ONLY, CHECKSUM` y se verificó con
-`RESTORE VERIFYONLY WITH CHECKSUM`. Archivo del servidor:
-`C:\Program Files\Microsoft SQL Server\MSSQL17.SQLEXPRESS\MSSQL\Backup\AlquilerEquipos_antes_HU05_0006_20261026T230053Z.bak`.
-Se compararon exactamente los valores previos y posteriores de las columnas
-originales de Categoria, Maquinaria, Unidad y Operador: sin cambios. Se verificaron
-la columna calculada persistida, su índice único y la ausencia de migraciones
-pendientes. `check` y `makemigrations --check --dry-run` pasaron.
-
-Pasaron 40 pruebas en SQL Server temporal: las 26 existentes y 14 nuevas de
-operadores. Cubren registro, persistencia y consulta de todos los campos,
-confirmación, obligatorios, fechas y longitudes, cédulas equivalentes, unicidad
-directa en SQL Server, permisos GET/POST, acceso anónimo, prevención de cambios
-de estado por POST y ausencia de cuentas de acceso nuevas. Las pruebas de la
-migración crean tablas aisladas para comprobar creación, adopción conservando
-valores legacy y rechazo de duplicados sin eliminar datos. La base temporal se
-elimina al terminar. También se comprobó el flujo web sobre la tabla legacy real
-dentro de una transacción revertida, sin dejar operadores de prueba guardados.
-
-Comprobación visual pendiente de aceptación:
-
-1. Ejecutar `.\.venv\Scripts\python.exe manage.py runserver` y entrar como
-   administrador en <http://127.0.0.1:8000/login/>.
-2. En el panel, abrir **Registrar operador**, completar los seis campos y guardar.
-3. Revisar el mensaje de confirmación, todos los valores y el estado **Activo**
-   en el detalle. Volver al listado y abrir otra vez **Ver detalles**.
-4. Intentar registrar la misma cédula cambiando guiones por espacios: debe
-   aparecer un error y mantenerse un solo operador.
-5. Enviar el formulario vacío: cada campo debe mostrar su error.
-6. Entrar como supervisor: no debe aparecer **Operadores** y acceder directamente
-   a `/operadores/registrar/` debe devolver acceso denegado.
-7. Volver al listado de maquinaria como administrador y comprobar que **Ver
-   detalles** y **Editar** siguen separados horizontalmente.
+HU-05 (registro y consulta de operadores) y HU-06 (asignación de operadores)
+quedan retiradas. No se redactan reemplazos en esta entrega. Las migraciones
+históricas se mantienen para las instalaciones existentes; el módulo web y su
+tabla SQL se retiran mediante migraciones nuevas. Consulta el
+[procedimiento y las evidencias de retirada](docs/retirada-operadores.md).
 
 ## HU-07: registrar mantenimiento (Sprint 3)
 
-HU-04 y HU-05 ya están integradas en `origin/main` mediante el PR #3. HU-07
-se desarrolla en `feat/sprint3-hu07-mantenimiento` desde ese estado. HU-06
-(asignación de operadores) queda pendiente. El documento Word no se modifica.
+El registro y la consulta de mantenimiento se conservan con Administrador y
+Técnico. HU-05 y HU-06 están retiradas. El documento Word no se modifica.
 
 Técnico y Administrador pueden abrir **Mantenimientos** desde la navegación o
 **Registrar mantenimiento** desde el panel. El formulario exige unidad física,
@@ -358,9 +328,9 @@ El historial en `/unidades/<id>/mantenimientos/` muestra fecha, tipo, descripci�
 costo y responsable, ordenados de más reciente a más antiguo. Se abre desde
 **Mantenimientos → Ver historial** o desde el detalle de maquinaria. Conserva
 acceso a unidades inactivas y registros antiguos sin técnico, que se identifican
-como **No registrado (registro anterior)**. Supervisor conserva su consulta de
-maquinaria; no recibe acceso nuevo a mantenimiento. La pertenencia a grupos es
-aditiva: asignar Técnico a un Supervisor conserva su grupo anterior.
+como **No registrado (registro anterior)**. Cliente puede consultar maquinaria y
+solicitar alquileres; mantenimiento está disponible para Administrador y Técnico.
+Las cuentas de los roles retirados se conservan sin asignarles un rol nuevo.
 
 ### Migración de mantenimiento
 
@@ -404,7 +374,8 @@ adopción: revisar también `usuarios/migrations/0007_integrar_mantenimiento.py`
 ```
 
 El primer comando crea la cuenta o añade `Técnico` a una cuenta existente.
-Conserva contraseña, grupos y actividad existentes; rechaza cuentas con
+Conserva contraseña y actividad existentes, retira Cliente y los grupos
+retirados y conserva otros grupos; rechaza cuentas con
 privilegios administrativos. Una cuenta nueva no puede iniciar sesión hasta
 establecer la contraseña. Si una cuenta ya tiene contraseña, se puede omitir
 `changepassword`. La cuenta debe estar activa. Desde Django Admin también se
@@ -418,28 +389,8 @@ Usar una unidad destinada a pruebas si no se desea cambiar un equipo operativo.
 
 ### Verificación y evidencias
 
-Validación del **27 de octubre de 2026**: **69 pruebas aprobadas en SQL Server**,
-las 40 anteriores y 29 nuevas de HU-07. Incluyen HU-04, HU-05, inicio/cierre de
-sesión, roles, validaciones, relaciones, historial y reversión transaccional.
-`check`, `makemigrations --check --dry-run` y `migrate --check` pasaron.
-La migración 0007 está aplicada en la base local `AlquilerEquipos`.
-
-Antes se creó un respaldo `COPY_ONLY, CHECKSUM`, verificado con
-`RESTORE VERIFYONLY WITH CHECKSUM`. El respaldo permanece fuera del repositorio.
-Se compararon exactamente todos los valores de las columnas originales de
-Categoria, Maquinaria, Unidad, Operador y Mantenimiento: sin cambios.
-Los recuentos se conservaron en 4, 4, 4, 1 y 0 respectivamente. Se verificaron
-ambas claves foráneas, las restricciones de costo/tipo y el grupo Técnico.
-También pasó el registro web sobre la tabla real dentro de una transacción
-revertida, sin dejar cuentas ni mantenimientos de prueba.
-
-El usuario reportó la revisión manual finalizada sin fallos en registro e
-historial, actualización de estado, rechazo de costo negativo, exclusión de
-unidades alquiladas o fuera de servicio, permisos de Técnico y Supervisor y
-regresión de HU-04/HU-05. Este reporte es independiente de las pruebas
-automatizadas. No se dan por realizadas otras comprobaciones manuales ni
-pruebas de carga o de concurrencia simultánea entre procesos. Las capturas y
-la actualización del documento Word siguen pendientes.
-
-Ver [guía de evidencias de HU-07](docs/hu07-mantenimiento.md) para las capturas,
-las comprobaciones SQL y el detalle de archivos modificados.
+Los resultados actuales de SQL Server, la ubicación de los respaldos y las
+comprobaciones de conservación de datos se registran en
+[retirada de operadores](docs/retirada-operadores.md).
+[La guía de HU-07](docs/hu07-mantenimiento.md) conserva los antecedentes del
+27 de octubre; sus referencias a operadores y Supervisor son históricas.

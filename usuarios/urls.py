@@ -1,14 +1,22 @@
 from django.urls import path
 from django.contrib.auth.views import LoginView, LogoutView
-from . import views
+from . import reportes, views
 
 urlpatterns = [
+    path('reportes/', reportes.indice, name='reporte_indice'),
+    path('reportes/maquinaria/', reportes.reporte, {'tipo': 'maquinaria'}, name='reporte_maquinaria'),
+    path('reportes/solicitudes/', reportes.reporte, {'tipo': 'solicitudes'}, name='reporte_solicitudes'),
+    path('reportes/entregas/', reportes.reporte, {'tipo': 'entregas'}, name='reporte_entregas'),
+    path('reportes/mantenimientos/', reportes.reporte, {'tipo': 'mantenimientos'}, name='reporte_mantenimientos'),
+    path('entregas/', views.entrega_lista, name='entrega_lista'),
+    path('solicitudes/<int:solicitud_id>/salida/', views.entrega_salida, name='entrega_salida'),
+    path('solicitudes/<int:solicitud_id>/retorno/', views.entrega_retorno, name='entrega_retorno'),
+    path('solicitudes/', views.solicitud_lista, name='solicitud_lista'),
+    path('maquinaria/<int:unidad_id>/solicitar/', views.solicitud_registrar, name='solicitud_registrar'),
+    path('solicitudes/<int:solicitud_id>/resolver/', views.solicitud_resolver, name='solicitud_resolver'),
     path('mantenimientos/', views.mantenimiento_lista, name='mantenimiento_lista'),
     path('mantenimientos/registrar/', views.mantenimiento_registrar, name='mantenimiento_registrar'),
     path('unidades/<int:unidad_id>/mantenimientos/', views.mantenimiento_historial, name='mantenimiento_historial'),
-    path('operadores/', views.operador_lista, name='operador_lista'),
-    path('operadores/registrar/', views.operador_registrar, name='operador_registrar'),
-    path('operadores/<int:operador_id>/', views.operador_detalle, name='operador_detalle'),
     # Muestra el formulario y comprueba las credenciales.
     path(
         'login/',
