@@ -170,20 +170,20 @@ class MaquinariaViewsTests(TestCase):
         self.assertIn('ubicacion_actual', error.exception.message_dict)
 
 
-class SupervisorTests(TestCase):
+class ClienteTests(TestCase):
     def setUp(self):
-        self.supervisor = get_user_model().objects.create_user(
-            username='supervisor', first_name='Ana', last_name='Pérez',
-            password='ClaveSupervisor123!',
+        self.cliente_usuario = get_user_model().objects.create_user(
+            username='cliente_usuario', first_name='Ana', last_name='Pérez',
+            password='ClaveCliente123!',
         )
-        self.supervisor.groups.add(Group.objects.create(name='Supervisor'))
+        self.cliente_usuario.groups.add(Group.objects.get_or_create(name='Cliente')[0])
         self.admin = get_user_model().objects.create_superuser(
             username='admin', password='ClaveAdmin123!'
         )
 
     def test_shared_login_displays_independent_roles(self):
         for usuario, clave, nombre, rol in (
-            (self.supervisor, 'ClaveSupervisor123!', 'Ana Pérez', 'Supervisor'),
+            (self.cliente_usuario, 'ClaveCliente123!', 'Ana Pérez', 'Cliente'),
             (self.admin, 'ClaveAdmin123!', 'admin', 'Administrador'),
         ):
             with self.subTest(rol=rol):
@@ -195,18 +195,18 @@ class SupervisorTests(TestCase):
                 self.assertRedirects(respuesta, reverse('dashboard'))
                 self.assertContains(respuesta, nombre)
                 self.assertContains(respuesta, f'Panel de {rol}')
-                if rol == 'Supervisor':
+                if rol == 'Cliente':
                     self.assertNotContains(respuesta, reverse('maquinaria_registrar'))
                 else:
                     self.assertContains(respuesta, reverse('maquinaria_registrar'))
                 self.client.post(reverse('logout'))
 
-    def test_supervisor_can_consult_but_cannot_register_by_direct_url(self):
+    def test_cliente_usuario_can_consult_but_cannot_register_by_direct_url(self):
         unidad = crear_unidad()
         unidad.anio_fabricacion = 2020
         unidad.ubicacion_actual = 'Patio norte'
         unidad.save()
-        self.client.force_login(self.supervisor)
+        self.client.force_login(self.cliente_usuario)
         lista = self.client.get(reverse('maquinaria_lista'))
         self.assertEqual(lista.status_code, 200)
         self.assertContains(lista, 'Patio norte')
@@ -244,7 +244,7 @@ class SupervisorTests(TestCase):
         for debug in (True, False):
             with self.settings(DEBUG=debug):
                 for usuario, urls in (
-                    (self.supervisor, (reverse('maquinaria_registrar'),)),
+                    (self.cliente_usuario, (reverse('maquinaria_registrar'),)),
                     (sin_rol, (
                         reverse('maquinaria_lista'),
                         reverse('maquinaria_registrar'),
@@ -279,25 +279,25 @@ class SupervisorTests(TestCase):
         self.assertFalse(Maquinaria.objects.exists())
 
     def test_command_creates_account_and_preserves_password_on_rerun(self):
-        call_command('crear_supervisor', 'nuevo', nombre='Luis', stdout=StringIO())
+        call_command('crear_cliente', 'nuevo', nombre='Luis', stdout=StringIO())
         usuario = get_user_model().objects.get(username='nuevo')
         self.assertFalse(usuario.has_usable_password())
         self.assertFalse(usuario.is_staff)
         self.assertFalse(usuario.is_superuser)
-        self.assertTrue(usuario.groups.filter(name='Supervisor').exists())
+        self.assertTrue(usuario.groups.filter(name='Cliente').exists())
         usuario.set_password('NuevaClaveSegura123!')
         usuario.save()
-        call_command('crear_supervisor', 'nuevo', stdout=StringIO())
+        call_command('crear_cliente', 'nuevo', stdout=StringIO())
         usuario.refresh_from_db()
         self.assertTrue(usuario.check_password('NuevaClaveSegura123!'))
 
     def test_command_never_changes_admin(self):
         with self.assertRaises(CommandError):
-            call_command('crear_supervisor', 'admin', stdout=StringIO())
+            call_command('crear_cliente', 'admin', stdout=StringIO())
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.is_staff)
         self.assertTrue(self.admin.is_superuser)
-        self.assertFalse(self.admin.groups.filter(name='Supervisor').exists())
+        self.assertFalse(self.admin.groups.filter(name='Cliente').exists())
 
     @staticmethod
     def _datos_post():
@@ -446,18 +446,18 @@ class MaquinariaEdicionTests(TestCase):
         self.assertIsNone(self.unidad.maquinaria.fecha_modificacion)
 
     def test_non_admin_cannot_edit_by_get_or_post(self):
-        grupo = Group.objects.create(name='Supervisor')
-        supervisor = get_user_model().objects.create_user(username='supervisor_edicion')
-        supervisor.groups.add(grupo)
+        grupo = Group.objects.get_or_create(name='Cliente')[0]
+        cliente_usuario = get_user_model().objects.create_user(username='cliente_usuario_edicion')
+        cliente_usuario.groups.add(grupo)
         sin_rol = get_user_model().objects.create_user(username='sinrol_edicion')
-        for usuario in (supervisor, sin_rol):
+        for usuario in (cliente_usuario, sin_rol):
             self.client.force_login(usuario)
             for metodo in (self.client.get, self.client.post):
                 with self.subTest(usuario=usuario.username, metodo=metodo.__name__):
                     respuesta = metodo(self.url, {**self.datos, 'nombre': 'Prohibido'})
                     self.assertEqual(respuesta.status_code, 403)
             self.assertNotContains(self.client.get(reverse('dashboard')), self.url)
-        self.client.force_login(supervisor)
+        self.client.force_login(cliente_usuario)
         self.assertNotContains(
             self.client.get(reverse('maquinaria_detalle', args=[self.unidad.pk])),
             self.url,

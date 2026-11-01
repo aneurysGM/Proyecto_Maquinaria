@@ -1,5 +1,13 @@
 # HU-07: implementación y evidencias del Sprint 3
 
+> Antecedente del 27 de octubre de 2026. Desde el 30 de octubre los roles
+> vigentes son Administrador, Cliente y Técnico de mantenimiento. HU-05 y HU-06
+> están retiradas, sin reemplazos redactados. Las menciones a Supervisor,
+> operadores y futuras publicaciones que siguen describen aquella entrega;
+> no son instrucciones vigentes. Consultar [cuentas y roles](cuentas-y-roles.md)
+> y [retirada de operadores](retirada-operadores.md). No se publica en GitHub
+> durante esta revisión.
+
 Fecha: 27 de octubre de 2026, zona America/Santo_Domingo.
 Rama local: `feat/sprint3-hu07-mantenimiento`, basada en `origin/main` (`e01dd1a`).
 El PR #3 ya integra HU-04 y HU-05. Esta entrega se prepara para publicación
@@ -143,13 +151,14 @@ persistente. No usar credenciales reales ni capturar contraseñas.
    del servidor ya está cubierta por la prueba automatizada.
 8. **Estado del equipo.** Consultar el detalle y el listado de maquinaria,
    donde debe aparecer «En mantenimiento» para la serie elegida.
-9. **Permisos directos.** Entrar como Supervisor y abrir
+9. **Permisos directos actuales.** Entrar como Cliente y abrir
    `/mantenimientos/registrar/`: capturar Acceso denegado. Con Técnico abrir
-   `/maquinaria/<id>/editar/` y `/operadores/`: capturar acceso denegado.
+   `/maquinaria/<id>/editar/`: capturar acceso denegado. `/operadores/` debe
+   devolver 404 con cualquier rol.
    Las pruebas verifican también POST y usuarios sin rol/staff/inactivos.
-10. **Regresión.** Entrar como Administrador, comprobar una edición HU-04 y
-    consultar/registrar un operador HU-05 con datos de prueba válidos. Capturar
-    sus confirmaciones, las acciones Ver detalles/Editar y el inicio de sesión.
+10. **Regresión actual.** Entrar como Administrador, comprobar una edición HU-04
+    y revisar las solicitudes de alquiler. Comprobar que las antiguas rutas de
+    operadores devuelven 404. No registrar operadores: HU-05 está retirada.
 
 Opcional en SSMS, después de un registro manual, capturar la asociación sin
 mostrar contraseñas ni otras columnas de usuarios:

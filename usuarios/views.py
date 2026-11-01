@@ -1,13 +1,20 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import DatabaseError, IntegrityError
+from django.db import DatabaseError, IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.http import HttpResponseBadRequest
 
-from .forms import MantenimientoForm, MaquinariaEdicionForm, MaquinariaForm, OperadorForm
+from .forms import (
+    MantenimientoForm, MaquinariaEdicionForm, MaquinariaForm, SolicitudAlquilerForm,
+    SalidaMaquinariaForm, RetornoMaquinariaForm,
+)
+from .entregas import registrar_salida, registrar_retorno
 from .roles import permisos_panel
-from .models import Operador, Unidad
+from .models import SolicitudAlquiler, Unidad
+from django.utils import timezone
+from django.views.decorators.http import require_POST, require_http_methods
 
 
 def acceso_denegado(request, exception):
@@ -100,6 +107,8 @@ def maquinaria_editar(request, maquinaria_id):
     if request.method == 'POST' and form.is_valid():
         try:
             form.save()
+        except ValidationError as error:
+            form.add_error(None, error)
         except IntegrityError:
             form.add_error(
                 None,
@@ -113,37 +122,6 @@ def maquinaria_editar(request, maquinaria_id):
         request, 'usuarios/maquinaria_form.html',
         {'form': form, 'edicion': True, 'maquinaria': unidad},
     )
-
-
-@login_required
-def operador_registrar(request):
-    if not permisos_panel(request.user)['puede_registrar_operador']:
-        raise PermissionDenied
-    form = OperadorForm(request.POST if request.method == 'POST' else None)
-    if request.method == 'POST' and form.is_valid():
-        try:
-            operador = form.save()
-        except IntegrityError:
-            form.add_error(None, 'No se pudo registrar el operador. Comprueba que la cédula no esté registrada y vuelve a intentarlo.')
-        else:
-            messages.success(request, 'El operador se registró correctamente.')
-            return redirect('operador_detalle', operador_id=operador.pk)
-    return render(request, 'usuarios/operador_form.html', {'form': form})
-
-
-@login_required
-def operador_lista(request):
-    if not permisos_panel(request.user)['puede_consultar_operadores']:
-        raise PermissionDenied
-    return render(request, 'usuarios/operador_lista.html', {'operadores': Operador.objects.all()})
-
-
-@login_required
-def operador_detalle(request, operador_id):
-    if not permisos_panel(request.user)['puede_consultar_operadores']:
-        raise PermissionDenied
-    operador = get_object_or_404(Operador, pk=operador_id)
-    return render(request, 'usuarios/operador_detalle.html', {'operador': operador})
 
 
 @login_required
@@ -190,3 +168,124 @@ def mantenimiento_historial(request, unidad_id):
     unidad = get_object_or_404(Unidad.objects.select_related('maquinaria'), pk=unidad_id)
     mantenimientos = unidad.mantenimientos.select_related('tecnico')
     return render(request, 'usuarios/mantenimiento_historial.html', {'unidad': unidad, 'mantenimientos': mantenimientos})
+
+
+@login_required
+def solicitud_registrar(request, unidad_id):
+    if not permisos_panel(request.user)['puede_solicitar_alquiler']:
+        raise PermissionDenied
+    unidad = get_object_or_404(Unidad.objects.select_related('maquinaria'), pk=unidad_id, activo=True, maquinaria__activo=True)
+    form = SolicitudAlquilerForm(request.POST if request.method == 'POST' else None)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            form.save(cliente=request.user, unidad=unidad)
+        except ValidationError as error:
+            form.add_error(None, error)
+        except DatabaseError:
+            form.add_error(None, 'No se pudo guardar la solicitud. Vuelve a intentarlo.')
+        else:
+            messages.success(request, 'Solicitud enviada. El administrador revisará tu solicitud.')
+            return redirect('solicitud_lista')
+    return render(request, 'usuarios/solicitud_form.html', {'form': form, 'unidad': unidad})
+
+
+@login_required
+def solicitud_lista(request):
+    permisos = permisos_panel(request.user)
+    if not permisos['puede_consultar_solicitudes']:
+        raise PermissionDenied
+    solicitudes = SolicitudAlquiler.objects.select_related('unidad__maquinaria', 'cliente', 'revisado_por')
+    if not permisos['puede_gestionar_solicitudes']:
+        solicitudes = solicitudes.filter(cliente=request.user)
+    return render(request, 'usuarios/solicitud_lista.html', {'solicitudes': solicitudes})
+
+
+@login_required
+@require_POST
+def solicitud_resolver(request, solicitud_id):
+    if not permisos_panel(request.user)['puede_gestionar_solicitudes']:
+        raise PermissionDenied
+    decision = request.POST.get('decision')
+    if decision not in ('Aprobada', 'Rechazada'):
+        return HttpResponseBadRequest('Decisión inválida.')
+    try:
+        with transaction.atomic():
+            # Bloqueo común por unidad: serializa la aprobación de solicitudes distintas.
+            referencia = get_object_or_404(SolicitudAlquiler, pk=solicitud_id)
+            unidad = Unidad.objects.select_for_update().select_related('maquinaria').get(pk=referencia.unidad_id)
+            solicitud = SolicitudAlquiler.objects.select_for_update().get(pk=solicitud_id)
+            if solicitud.estado != 'Pendiente':
+                raise ValidationError('Esta solicitud ya fue revisada.')
+            if decision == 'Aprobada':
+                if solicitud.fecha_inicio < timezone.localdate():
+                    raise ValidationError('No se puede aprobar una solicitud con fecha de inicio pasada.')
+                if not unidad.activo or not unidad.maquinaria.activo or unidad.estado != 'Disponible':
+                    raise ValidationError('La unidad no está disponible para aprobar el alquiler.')
+                if SolicitudAlquiler.objects.filter(unidad=unidad, estado='Aprobada', fecha_inicio__lte=solicitud.fecha_fin, fecha_fin__gte=solicitud.fecha_inicio).exists():
+                    raise ValidationError('Ya existe una solicitud aprobada para esas fechas.')
+            solicitud.estado = decision
+            solicitud.revisado_por = request.user
+            solicitud.fecha_revision = timezone.now()
+            solicitud.save(update_fields=['estado', 'revisado_por', 'fecha_revision'])
+    except ValidationError as error:
+        messages.error(request, ' '.join(error.messages))
+    except DatabaseError:
+        messages.error(request, 'No se pudo actualizar la solicitud. Vuelve a intentarlo.')
+    else:
+        messages.success(request, f'Solicitud {decision.lower()} correctamente.')
+    return redirect('solicitud_lista')
+
+
+@login_required
+def entrega_lista(request):
+    if not permisos_panel(request.user)['puede_gestionar_entregas']:
+        raise PermissionDenied
+    estado = request.GET.get('estado', 'pendientes')
+    if estado not in ('pendientes', 'devueltas', 'todas'):
+        return HttpResponseBadRequest('Filtro de entregas inválido.')
+    entregas = SolicitudAlquiler.objects.filter(fecha_salida__isnull=False).select_related(
+        'unidad__maquinaria', 'cliente', 'entregado_por', 'recibido_por',
+    ).order_by('-fecha_salida', '-id')
+    if estado == 'pendientes':
+        entregas = entregas.filter(fecha_retorno__isnull=True)
+    elif estado == 'devueltas':
+        entregas = entregas.filter(fecha_retorno__isnull=False)
+    return render(request, 'usuarios/entrega_lista.html', {'entregas': entregas, 'estado': estado})
+
+
+def _registrar_movimiento(request, solicitud_id, *, retorno):
+    if not permisos_panel(request.user)['puede_gestionar_entregas']:
+        raise PermissionDenied
+    solicitud = get_object_or_404(
+        SolicitudAlquiler.objects.select_related('unidad__maquinaria', 'cliente'), pk=solicitud_id,
+    )
+    clase = RetornoMaquinariaForm if retorno else SalidaMaquinariaForm
+    form = clase(request.POST if request.method == 'POST' else None)
+    if request.method == 'POST' and form.is_valid():
+        try:
+            if retorno:
+                registrar_retorno(solicitud.pk, administrador=request.user, **form.cleaned_data)
+            else:
+                registrar_salida(solicitud.pk, administrador=request.user, **form.cleaned_data)
+        except ValidationError as error:
+            form.add_error(None, error)
+        except DatabaseError:
+            form.add_error(None, 'No se pudo registrar el movimiento. No se guardaron cambios. Actualiza e inténtalo de nuevo.')
+        else:
+            messages.success(request, 'Retorno registrado. Estado de la unidad: Disponible.' if retorno else 'Salida registrada. Estado de la unidad: Alquilado.')
+            return redirect('entrega_lista')
+    return render(request, 'usuarios/entrega_form.html', {
+        'solicitud': solicitud, 'form': form, 'retorno': retorno,
+    })
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def entrega_salida(request, solicitud_id):
+    return _registrar_movimiento(request, solicitud_id, retorno=False)
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def entrega_retorno(request, solicitud_id):
+    return _registrar_movimiento(request, solicitud_id, retorno=True)

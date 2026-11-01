@@ -3,14 +3,14 @@ from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from usuarios.roles import SUPERVISOR
+from usuarios.roles import CLIENTE
 
 
 class Command(BaseCommand):
-    help = 'Crea una cuenta de consulta en el grupo Supervisor, sin acceso a Django Admin.'
+    help = 'Crea una cuenta de cliente en el grupo Cliente, sin acceso a Django Admin.'
 
     def add_arguments(self, parser):
-        parser.add_argument('username', nargs='?', default='supervisor')
+        parser.add_argument('username', nargs='?', default='cliente')
         parser.add_argument('--nombre', default=None)
         parser.add_argument('--apellido', default=None)
 
@@ -31,10 +31,11 @@ class Command(BaseCommand):
             if options[opcion] is not None:
                 setattr(usuario, campo, options[opcion])
         usuario.save()
-        grupo, _ = Group.objects.get_or_create(name=SUPERVISOR)
+        grupo, _ = Group.objects.get_or_create(name=CLIENTE)
+        usuario.groups.remove(*Group.objects.filter(name__in=['Técnico', 'Supervisor', 'Operador']))
         usuario.groups.add(grupo)
         self.stdout.write(self.style.SUCCESS(
-            f'Cuenta {usuario.username} asignada al grupo {SUPERVISOR}; '
+            f'Cuenta {usuario.username} asignada al grupo {CLIENTE}; '
             'sin permisos de superusuario ni acceso a Django Admin.'
         ))
         self.stdout.write(f'Establece su contraseña con: python manage.py changepassword {usuario.username}')

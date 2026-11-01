@@ -16,9 +16,10 @@
             {% if puede_consultar_maquinaria %}
             <a href="{% url 'maquinaria_lista' %}">Maquinaria</a>
             {% endif %}
-            {% if puede_consultar_operadores %}
-            <a href="{% url 'operador_lista' %}">Operadores</a>
-            {% endif %}
+
+            {% if puede_consultar_solicitudes %}<a href="{% url 'solicitud_lista' %}">Solicitudes de alquiler</a>{% endif %}
+            {% if puede_gestionar_entregas %}<a href="{% url 'entrega_lista' %}">Salidas y retornos</a>{% endif %}
+            {% if puede_ver_reportes %}<a href="{% url 'reporte_indice' %}">Reportes</a>{% endif %}
             {% if puede_consultar_mantenimientos %}
             <a href="{% url 'mantenimiento_lista' %}">Mantenimientos</a>
             {% endif %}
