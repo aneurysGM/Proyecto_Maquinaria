@@ -54,4 +54,5 @@ urlpatterns = [
     path("registro/", views.registro, name="registro"),
     # Apartado de clientes registrados
     path("clientes/", views.lista_clientes, name="cliente_lista"),
+    
 ]

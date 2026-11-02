@@ -14,9 +14,6 @@
     .mq-back { display: inline-flex; align-items: center; gap: .4rem; color: var(--mq-steel); text-decoration: none; font-weight: 500; margin-bottom: 1rem; }
     .mq-back:hover { color: var(--mq-ink); }
 
-    .mq-btn-secondary { border: 1px solid #c5ccd2; background: #fff; color: var(--mq-ink); font-weight: 600; padding: .65rem 1.2rem; border-radius: 10px; }
-    .mq-btn-secondary:hover { background: var(--mq-concrete); color: var(--mq-ink); }
-
     /* Cabecera */
     .mq-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem; margin-bottom: 1.5rem; }
     .mq-hero-icon {
@@ -31,10 +28,10 @@
 
     .mq-chip { display: inline-flex; align-items: center; gap: .35rem; background: var(--mq-concrete); border-radius: 999px; padding: .2rem .75rem; font-size: .88rem; color: var(--mq-ink); font-weight: 500; }
 
-    /* Estado (el color lo asigna el JS según el texto) */
+    /* Estado */
     .mq-status { display: inline-flex; align-items: center; gap: .4rem; border-radius: 999px; padding: .3rem .85rem; font-size: .9rem; font-weight: 600; background: var(--mq-concrete); color: var(--mq-ink); }
     .mq-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-    .mq-status.is-ok     { background: #e3f4e8; color: #1e7a3c; }
+    .mq-status.is-ok    { background: #e3f4e8; color: #1e7a3c; }
     .mq-status.is-busy   { background: #e3eefb; color: #1d5fa8; }
     .mq-status.is-warn   { background: #fff3cd; color: #8a6400; }
     .mq-status.is-danger { background: #fde4e1; color: #b3261e; }
@@ -93,6 +90,21 @@
             <span class="mq-chip"><i class="bi bi-tag"></i>{{ maquinaria.categoria }}</span>
         </div>
     </header>
+
+    {# ---------- Barra de Acciones (Editar y Dar de baja) ---------- #}
+    <div class="d-flex gap-2 mb-4">
+        <a href="{% url 'maquinaria_editar' maquinaria.id %}" class="btn btn-warning fw-semibold">
+            <i class="bi bi-pencil-square"></i> Editar Equipo
+        </a>
+        
+        <form action="{% url 'maquinaria_dar_de_baja' maquinaria.id %}" method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de que deseas dar de baja o eliminar esta maquinaria?');">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'maquinaria_lista' %}">
+            <button type="submit" class="btn btn-danger fw-semibold">
+                <i class="bi bi-trash-fill"></i> Dar de baja / Eliminar
+            </button>
+        </form>
+    </div>
 
     {# ---------- Tarifas ---------- #}
     <div class="row g-3 mb-4">
@@ -167,22 +179,6 @@
                     </dl>
                 </div>
             </section>
-        </div>
-    </div>
-</div>
-<div class="container mt-4">
-    <div class="card shadow-sm p-4">
-        <h2>{{ maquinaria.nombre }}</h2>
-        <hr>
-        <p><strong>Código:</strong> {{ maquinaria.codigo }}</p>
-        <p><strong>Categoría:</strong> {{ maquinaria.categoria }}</p>
-        <p><strong>Número de serie:</strong> {{ maquinaria.numero_serie }}</p>
-        <p><strong>Estado:</strong> <span class="badge bg-secondary">{{ maquinaria.estado }}</span></p>
-        <p><strong>Ubicación actual:</strong> {{ maquinaria.ubicacion_actual|default:"No especificada" }}</p>
-        
-        <div class="mt-3">
-            <a href="{% url 'maquinaria_lista' %}" class="btn btn-dark">Volver al listado</a>
-            <a href="{% url 'maquinaria_editar' maquinaria.id %}" class="btn btn-warning">Editar equipo</a>
         </div>
     </div>
 </div>
