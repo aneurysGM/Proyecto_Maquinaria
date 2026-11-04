@@ -380,3 +380,4 @@ def entrega_salida(request, solicitud_id):
 @require_http_methods(['GET', 'POST'])
 def entrega_retorno(request, solicitud_id):
     return _registrar_movimiento(request, solicitud_id, retorno=True)
+
