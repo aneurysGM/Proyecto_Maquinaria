@@ -170,20 +170,20 @@ class MaquinariaViewsTests(TestCase):
         self.assertIn('ubicacion_actual', error.exception.message_dict)
 
 
-class SupervisorTests(TestCase):
+class ClienteTests(TestCase):
     def setUp(self):
-        self.supervisor = get_user_model().objects.create_user(
-            username='supervisor', first_name='Ana', last_name='Pérez',
-            password='ClaveSupervisor123!',
+        self.cliente_usuario = get_user_model().objects.create_user(
+            username='cliente_usuario', first_name='Ana', last_name='Pérez',
+            password='ClaveCliente123!',
         )
-        self.supervisor.groups.add(Group.objects.create(name='Supervisor'))
+        self.cliente_usuario.groups.add(Group.objects.get_or_create(name='Cliente')[0])
         self.admin = get_user_model().objects.create_superuser(
             username='admin', password='ClaveAdmin123!'
         )
 
     def test_shared_login_displays_independent_roles(self):
         for usuario, clave, nombre, rol in (
-            (self.supervisor, 'ClaveSupervisor123!', 'Ana Pérez', 'Supervisor'),
+            (self.cliente_usuario, 'ClaveCliente123!', 'Ana Pérez', 'Cliente'),
             (self.admin, 'ClaveAdmin123!', 'admin', 'Administrador'),
         ):
             with self.subTest(rol=rol):
@@ -195,18 +195,18 @@ class SupervisorTests(TestCase):
                 self.assertRedirects(respuesta, reverse('dashboard'))
                 self.assertContains(respuesta, nombre)
                 self.assertContains(respuesta, f'Panel de {rol}')
-                if rol == 'Supervisor':
+                if rol == 'Cliente':
                     self.assertNotContains(respuesta, reverse('maquinaria_registrar'))
                 else:
                     self.assertContains(respuesta, reverse('maquinaria_registrar'))
                 self.client.post(reverse('logout'))
 
-    def test_supervisor_can_consult_but_cannot_register_by_direct_url(self):
+    def test_cliente_usuario_can_consult_but_cannot_register_by_direct_url(self):
         unidad = crear_unidad()
         unidad.anio_fabricacion = 2020
         unidad.ubicacion_actual = 'Patio norte'
         unidad.save()
-        self.client.force_login(self.supervisor)
+        self.client.force_login(self.cliente_usuario)
         lista = self.client.get(reverse('maquinaria_lista'))
         self.assertEqual(lista.status_code, 200)
         self.assertContains(lista, 'Patio norte')
@@ -244,7 +244,7 @@ class SupervisorTests(TestCase):
         for debug in (True, False):
             with self.settings(DEBUG=debug):
                 for usuario, urls in (
-                    (self.supervisor, (reverse('maquinaria_registrar'),)),
+                    (self.cliente_usuario, (reverse('maquinaria_registrar'),)),
                     (sin_rol, (
                         reverse('maquinaria_lista'),
                         reverse('maquinaria_registrar'),
@@ -279,25 +279,25 @@ class SupervisorTests(TestCase):
         self.assertFalse(Maquinaria.objects.exists())
 
     def test_command_creates_account_and_preserves_password_on_rerun(self):
-        call_command('crear_supervisor', 'nuevo', nombre='Luis', stdout=StringIO())
+        call_command('crear_cliente', 'nuevo', nombre='Luis', stdout=StringIO())
         usuario = get_user_model().objects.get(username='nuevo')
         self.assertFalse(usuario.has_usable_password())
         self.assertFalse(usuario.is_staff)
         self.assertFalse(usuario.is_superuser)
-        self.assertTrue(usuario.groups.filter(name='Supervisor').exists())
+        self.assertTrue(usuario.groups.filter(name='Cliente').exists())
         usuario.set_password('NuevaClaveSegura123!')
         usuario.save()
-        call_command('crear_supervisor', 'nuevo', stdout=StringIO())
+        call_command('crear_cliente', 'nuevo', stdout=StringIO())
         usuario.refresh_from_db()
         self.assertTrue(usuario.check_password('NuevaClaveSegura123!'))
 
     def test_command_never_changes_admin(self):
         with self.assertRaises(CommandError):
-            call_command('crear_supervisor', 'admin', stdout=StringIO())
+            call_command('crear_cliente', 'admin', stdout=StringIO())
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.is_staff)
         self.assertTrue(self.admin.is_superuser)
-        self.assertFalse(self.admin.groups.filter(name='Supervisor').exists())
+        self.assertFalse(self.admin.groups.filter(name='Cliente').exists())
 
     @staticmethod
     def _datos_post():
@@ -310,3 +310,196 @@ class SupervisorTests(TestCase):
             'horas_uso': '0',
             'anio_fabricacion': '2020', 'ubicacion_actual': 'Patio norte',
         }
+
+class MaquinariaEdicionTests(TestCase):
+    def setUp(self):
+        self.admin = get_user_model().objects.create_superuser(
+            username='editor', password='ClaveEdicion123!',
+        )
+        self.client.force_login(self.admin)
+        self.unidad = crear_unidad()
+        self.unidad.anio_fabricacion = 2020
+        self.unidad.ubicacion_actual = 'Patio norte'
+        self.unidad.save()
+        self.url = reverse('maquinaria_editar', args=[self.unidad.pk])
+        self.datos = {
+            'codigo': 'RET-001', 'nombre': 'Retroexcavadora',
+            'categoria': 'Construcción', 'marca': 'Marca', 'modelo': 'Modelo X',
+            'costo_adquisicion': '125000.00', 'tarifa_diaria': '150.00',
+            'tarifa_semanal': '900.00', 'tarifa_mensual': '3000.00',
+            'deposito_garantia': '500.00', 'numero_serie': 'SERIE-001',
+            'estado': 'Disponible', 'horas_uso': '12.5',
+            'fecha_adquisicion': '', 'anio_fabricacion': '2020',
+            'ubicacion_actual': 'Patio norte',
+        }
+
+    def test_form_shows_current_values_and_edit_actions(self):
+        respuesta = self.client.get(self.url)
+        self.assertContains(respuesta, 'Editar maquinaria')
+        self.assertEqual(respuesta.context['form'].initial['numero_serie'], 'SERIE-001')
+        self.assertEqual(respuesta.context['form'].initial['categoria'], 'Construcción')
+        self.assertContains(
+            self.client.get(reverse('maquinaria_lista')), self.url,
+        )
+        self.assertContains(
+            self.client.get(reverse('maquinaria_detalle', args=[self.unidad.pk])),
+            self.url,
+        )
+        self.unidad.refresh_from_db()
+        self.assertIsNone(self.unidad.fecha_modificacion)
+
+    def test_date_input_uses_iso_format_for_existing_acquisition(self):
+        from datetime import date
+        self.unidad.fecha_adquisicion = date(2025, 1, 15)
+        self.unidad.save()
+        respuesta = self.client.get(self.url)
+        self.assertContains(respuesta, 'value="2025-01-15"')
+
+    def test_edit_updates_existing_rows_and_records_dates(self):
+        from django.utils import timezone
+        inicio = timezone.now()
+        respuesta = self.client.post(self.url, {
+            **self.datos, 'nombre': 'Retroexcavadora actualizada',
+            'codigo': 'RET-NUEVO', 'numero_serie': 'SERIE-NUEVA',
+            'categoria': 'Excavación', 'ubicacion_actual': '  Patio sur  ',
+            'tarifa_diaria': '200.00', 'anio_fabricacion': '2021',
+        })
+        self.assertRedirects(
+            respuesta, reverse('maquinaria_detalle', args=[self.unidad.pk]),
+        )
+        self.unidad.refresh_from_db()
+        catalogo = self.unidad.maquinaria
+        self.assertEqual(Unidad.objects.count(), 1)
+        self.assertEqual(Maquinaria.objects.count(), 1)
+        self.assertEqual(self.unidad.numero_serie, 'SERIE-NUEVA')
+        self.assertEqual(self.unidad.ubicacion_actual, 'Patio sur')
+        self.assertEqual(self.unidad.anio_fabricacion, 2021)
+        self.assertEqual(catalogo.codigo, 'RET-NUEVO')
+        self.assertEqual(str(catalogo.tarifa_diaria), '200.00')
+        self.assertEqual(catalogo.categoria.nombre, 'Excavación')
+        self.assertGreaterEqual(self.unidad.fecha_modificacion, inicio)
+        self.assertGreaterEqual(catalogo.fecha_modificacion, inicio)
+        detalle = self.client.get(reverse('maquinaria_detalle', args=[self.unidad.pk]))
+        self.assertContains(detalle, 'Retroexcavadora actualizada')
+        self.assertContains(detalle, 'Última modificación')
+
+    def test_own_identifiers_are_allowed_without_fabricating_modification(self):
+        respuesta = self.client.post(self.url, self.datos)
+        self.assertEqual(respuesta.status_code, 302)
+        self.unidad.refresh_from_db()
+        self.assertIsNone(self.unidad.fecha_modificacion)
+        self.assertIsNone(self.unidad.maquinaria.fecha_modificacion)
+
+    def test_other_codes_and_serials_are_rejected(self):
+        crear_unidad(codigo='RET-002', serie='SERIE-002')
+        for cambio, campo in (
+            ({'codigo': 'ret-002'}, 'codigo'),
+            ({'numero_serie': 'serie-002'}, 'numero_serie'),
+        ):
+            with self.subTest(campo=campo):
+                respuesta = self.client.post(self.url, {**self.datos, **cambio})
+                self.assertIn(campo, respuesta.context['form'].errors)
+        self.unidad.refresh_from_db()
+        self.assertEqual(self.unidad.codigo, 'RET-001')
+        self.assertEqual(self.unidad.numero_serie, 'SERIE-001')
+        self.assertIsNone(self.unidad.fecha_modificacion)
+
+    def test_invalid_fields_do_not_change_either_record(self):
+        for cambio, campo in (
+            ({'nombre': ''}, 'nombre'),
+            ({'numero_serie': ''}, 'numero_serie'),
+            ({'ubicacion_actual': '   '}, 'ubicacion_actual'),
+            ({'anio_fabricacion': str(anio_actual() + 1)}, 'anio_fabricacion'),
+            ({'tarifa_diaria': '-1'}, 'tarifa_diaria'),
+        ):
+            with self.subTest(campo=campo):
+                respuesta = self.client.post(self.url, {
+                    **self.datos, 'categoria': 'No debe crearse',
+                    'estado': 'Mantenimiento', **cambio,
+                })
+                self.assertIn(campo, respuesta.context['form'].errors)
+                self.unidad.refresh_from_db()
+                self.assertEqual(self.unidad.estado, 'Disponible')
+                self.assertIsNone(self.unidad.fecha_modificacion)
+                self.assertIsNone(self.unidad.maquinaria.fecha_modificacion)
+                self.assertFalse(Categoria.objects.filter(nombre='No debe crearse').exists())
+
+    def test_shared_catalog_and_independent_units(self):
+        otra = Unidad.objects.create(
+            maquinaria=self.unidad.maquinaria, numero_serie='OTRA-UNIDAD',
+            ubicacion_actual='Taller', anio_fabricacion=2019,
+        )
+        self.client.post(self.url, {
+            **self.datos, 'nombre': 'Nombre compartido', 'ubicacion_actual': 'Patio sur',
+        })
+        otra.refresh_from_db()
+        self.unidad.refresh_from_db()
+        self.assertEqual(otra.nombre, 'Nombre compartido')
+        self.assertEqual(otra.ubicacion_actual, 'Taller')
+        self.assertIsNone(otra.fecha_modificacion)
+        self.assertEqual(self.unidad.ubicacion_actual, 'Patio sur')
+
+    def test_unit_edit_does_not_stamp_unchanged_catalog(self):
+        self.client.post(self.url, {**self.datos, 'ubicacion_actual': 'Patio sur'})
+        self.unidad.refresh_from_db()
+        self.assertIsNotNone(self.unidad.fecha_modificacion)
+        self.assertIsNone(self.unidad.maquinaria.fecha_modificacion)
+
+    def test_non_admin_cannot_edit_by_get_or_post(self):
+        grupo = Group.objects.get_or_create(name='Cliente')[0]
+        cliente_usuario = get_user_model().objects.create_user(username='cliente_usuario_edicion')
+        cliente_usuario.groups.add(grupo)
+        sin_rol = get_user_model().objects.create_user(username='sinrol_edicion')
+        for usuario in (cliente_usuario, sin_rol):
+            self.client.force_login(usuario)
+            for metodo in (self.client.get, self.client.post):
+                with self.subTest(usuario=usuario.username, metodo=metodo.__name__):
+                    respuesta = metodo(self.url, {**self.datos, 'nombre': 'Prohibido'})
+                    self.assertEqual(respuesta.status_code, 403)
+            self.assertNotContains(self.client.get(reverse('dashboard')), self.url)
+        self.client.force_login(cliente_usuario)
+        self.assertNotContains(
+            self.client.get(reverse('maquinaria_detalle', args=[self.unidad.pk])),
+            self.url,
+        )
+        self.unidad.refresh_from_db()
+        self.assertEqual(self.unidad.nombre, 'Retroexcavadora')
+        self.assertIsNone(self.unidad.fecha_modificacion)
+
+    def test_missing_inactive_and_anonymous_access(self):
+        self.assertEqual(
+            self.client.get(reverse('maquinaria_editar', args=[999999])).status_code, 404,
+        )
+        self.unidad.activo = False
+        self.unidad.save()
+        self.assertEqual(self.client.get(self.url).status_code, 404)
+        self.client.logout()
+        respuesta = self.client.get(self.url)
+        self.assertRedirects(respuesta, f'{reverse("login")}?next={self.url}')
+
+    def test_database_failure_rolls_back_catalog_unit_and_category(self):
+        from unittest.mock import patch
+        from django.db import IntegrityError
+        from .forms import MaquinariaEdicionForm
+        guardar = MaquinariaEdicionForm._guardar_cambios
+
+        def falla_segundo_guardado(objeto, valores, fecha):
+            if isinstance(objeto, Unidad):
+                raise IntegrityError('Conflicto simulado')
+            guardar(objeto, valores, fecha)
+
+        with patch.object(
+            MaquinariaEdicionForm, '_guardar_cambios',
+            side_effect=falla_segundo_guardado,
+        ):
+            respuesta = self.client.post(self.url, {
+                **self.datos, 'nombre': 'Debe revertirse',
+                'categoria': 'Categoría temporal', 'ubicacion_actual': 'Patio sur',
+            })
+        self.assertContains(respuesta, 'No se pudieron guardar los cambios.')
+        self.unidad.refresh_from_db()
+        self.assertEqual(self.unidad.nombre, 'Retroexcavadora')
+        self.assertEqual(self.unidad.ubicacion_actual, 'Patio norte')
+        self.assertIsNone(self.unidad.maquinaria.fecha_modificacion)
+        self.assertIsNone(self.unidad.fecha_modificacion)
+        self.assertFalse(Categoria.objects.filter(nombre='Categoría temporal').exists())

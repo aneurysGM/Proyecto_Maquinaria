@@ -1,0 +1,113 @@
+{% extends 'usuarios/base.html' %}
+
+{% block title %}Registrar mantenimiento{% endblock %}
+{% block page_name %}Registrar mantenimiento{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mt-wrap { max-width: 820px; margin: 1.5rem auto; }
+    .mt-back { display: inline-flex; align-items: center; gap: .4rem; color: var(--mq-steel); text-decoration: none; font-weight: 500; margin-bottom: .75rem; }
+    .mt-back:hover { color: var(--mq-ink); }
+    .mt-head h1 { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 2rem; margin: 0; }
+    .mt-head p { margin: 0 0 1rem; color: var(--mq-steel); }
+
+    .mt-notice { display: flex; gap: .7rem; align-items: flex-start; background: #fff6d6; border: 1px solid #f2d36b; color: #6b5200; border-radius: 12px; padding: .8rem 1rem; margin-bottom: 1rem; }
+    .mt-notice i { font-size: 1.1rem; margin-top: .1rem; }
+
+    .mt-card { background: #fff; border-radius: var(--mq-radius); border: 1px solid var(--mq-line); box-shadow: 0 2px 12px rgba(20,30,60,.05); overflow: hidden; }
+    .mt-card::before { content: ''; display: block; height: 6px; background: repeating-linear-gradient(-45deg, var(--mq-amber) 0 12px, var(--mq-ink) 12px 24px); }
+    .mt-body { padding: 1.5rem; }
+
+    .mt-tecnico { display: flex; align-items: center; gap: .75rem; padding: .75rem 1rem; background: #f6f8f9; border-radius: 12px; margin-bottom: 1.25rem; }
+    .mt-tecnico .mq-avatar { width: 38px; height: 38px; }
+    .mt-tecnico small { display: block; color: var(--mq-steel); }
+
+    .mt-errors { background: #fdecea; color: #b42318; border-radius: 10px; padding: .8rem 1rem; margin-bottom: 1rem; }
+    .mt-errors ul { margin: 0; padding-left: 1.1rem; }
+
+    .mt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem 1.25rem; }
+    .mt-field.full { grid-column: 1 / -1; }
+    .mt-field label { display: block; font-weight: 600; margin-bottom: .35rem; }
+    .mt-field input, .mt-field select, .mt-field textarea {
+        width: 100%; padding: .6rem .8rem; border: 1px solid #c5ccd2; border-radius: 10px;
+        background: #fff; font: inherit; color: var(--mq-ink); transition: border-color .15s, box-shadow .15s;
+    }
+    .mt-field input:focus, .mt-field select:focus, .mt-field textarea:focus {
+        outline: none; border-color: var(--mq-amber-dark); box-shadow: 0 0 0 3px rgba(242,183,5,.25);
+    }
+    .mt-field textarea { resize: vertical; }
+    .mt-field small { display: block; font-size: .85rem; color: var(--mq-steel); margin-top: .3rem; }
+    .mt-field .field-error { display: block; font-size: .85rem; color: #b42318; margin-top: .3rem; }
+
+    .mt-actions { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--mq-line); }
+    .mt-btn { display: inline-flex; align-items: center; gap: .45rem; padding: .6rem 1.2rem; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid transparent; cursor: pointer; transition: transform .15s, background .15s; }
+    .mt-btn:hover { transform: translateY(-1px); }
+    .mt-btn-primary { background: var(--mq-amber); color: var(--mq-ink); }
+    .mt-btn-primary:hover { background: var(--mq-amber-dark); color: var(--mq-ink); }
+    .mt-btn-light { background: #fff; border-color: #c5ccd2; color: var(--mq-ink); }
+    .mt-btn-light:hover { background: var(--mq-concrete); color: var(--mq-ink); }
+
+    @media (max-width: 640px) { .mt-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mt-wrap">
+
+    <a class="mt-back" href="{% url 'mantenimiento_lista' %}">
+        <i class="bi bi-arrow-left"></i> Volver a mantenimientos
+    </a>
+
+    <header class="mt-head">
+        <h1>Registrar mantenimiento</h1>
+        <p>Completa todos los campos y comprueba el número de serie de la unidad.</p>
+    </header>
+
+    <div class="mt-notice" role="note">
+        <i class="bi bi-info-circle-fill"></i>
+        <div>
+            La unidad quedará en estado <strong>En mantenimiento</strong> al guardar.
+            Puedes añadir actividades a una unidad que ya esté en mantenimiento.
+        </div>
+    </div>
+
+    <div class="mt-card">
+        <form class="mt-body" method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="mt-tecnico">
+                <div class="mq-avatar">{{ nombre_usuario|first|upper }}</div>
+                <div>
+                    <strong>Técnico responsable: {{ nombre_usuario }}</strong>
+                    <small>Usuario: {{ request.user.username }} · Se obtiene de tu sesión.</small>
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="mt-errors" role="alert">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <div class="mt-grid">
+                {% for field in form %}
+                <div class="mt-field {% if field.name == 'unidad' or field.name == 'descripcion' %}full{% endif %}">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                    {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-actions">
+                <a class="mt-btn mt-btn-light" href="{% url 'mantenimiento_lista' %}">Cancelar</a>
+                <button class="mt-btn mt-btn-primary" type="submit">
+                    <i class="bi bi-check-lg"></i> Guardar mantenimiento
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

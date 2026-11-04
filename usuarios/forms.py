@@ -1,13 +1,23 @@
+from zoneinfo import ZoneInfo
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Categoria, Maquinaria, Operador, Unidad
+from .models import (
+    Categoria, Mantenimiento, Maquinaria, SolicitudAlquiler, Unidad,
+)
+from .roles import CLIENTE, permisos_panel
 from .validators import anio_actual, normalizar_cedula, validar_cedula
 
+
+# ---------------------------------------------------------------------------
+# Maquinaria
+# ---------------------------------------------------------------------------
 
 class MaquinariaForm(forms.Form):
     ESTADOS = Unidad.ESTADOS
@@ -116,9 +126,7 @@ class MaquinariaForm(forms.Form):
 
     @transaction.atomic
     def save(self):
-        # -------------------------------------------------------------
-        # SAVE DE CREACIÓN: Crea registros completamente nuevos en BD
-        # -------------------------------------------------------------
+        # Creación: registros completamente nuevos en BD.
         datos = self.cleaned_data
         categoria = Categoria.objects.filter(
             nombre__iexact=datos['categoria']
@@ -159,7 +167,6 @@ class MaquinariaEdicionForm(MaquinariaForm):
     )
 
     def __init__(self, *args, unidad, **kwargs):
-        kwargs.pop('instance', None)  # Seguridad por si acaso
         self.unidad = unidad
         inicial = {
             campo: getattr(unidad.maquinaria, campo)
@@ -185,26 +192,29 @@ class MaquinariaEdicionForm(MaquinariaForm):
 
     @transaction.atomic
     def save(self):
-        # -------------------------------------------------------------
-        # SAVE DE EDICIÓN: Actualiza registros existentes sin duplicarlos
-        # -------------------------------------------------------------
+        # Edición: actualiza registros existentes sin duplicarlos.
+        # Bloquear catálogo y unidad mantiene ambos cambios en una transacción.
         maquinaria = Maquinaria.objects.select_for_update().get(
             pk=self.unidad.maquinaria_id
         )
         unidad = Unidad.objects.select_for_update().get(pk=self.unidad.pk)
         datos = self.cleaned_data
-        
+        if datos['estado'] != 'Alquilado' and unidad.solicitudes_alquiler.filter(
+            fecha_salida__isnull=False, fecha_retorno__isnull=True,
+        ).exists():
+            raise ValidationError(
+                'La unidad tiene una entrega pendiente. '
+                'Registra su retorno para cambiar el estado.'
+            )
         categoria = Categoria.objects.filter(
             nombre__iexact=datos['categoria']
         ).first()
         if categoria is None:
             categoria = Categoria.objects.create(nombre=datos['categoria'])
-            
         catalogo = {campo: datos[campo] for campo in self.CAMPOS_CATALOGO}
         catalogo['marca'] = catalogo['marca'] or None
         catalogo['modelo'] = catalogo['modelo'] or None
         catalogo['categoria'] = categoria
-        
         fecha = timezone.now()
         self._guardar_cambios(maquinaria, catalogo, fecha)
         self._guardar_cambios(
@@ -212,45 +222,140 @@ class MaquinariaEdicionForm(MaquinariaForm):
         )
         return unidad
 
-
-class OperadorForm(forms.Form):
-    nombre_completo = forms.CharField(label='Nombre completo', max_length=161, strip=True)
-    cedula = forms.CharField(label='Cédula', max_length=60, validators=[validar_cedula])
-    telefono = forms.CharField(label='Teléfono', max_length=20, strip=True)
-    direccion = forms.CharField(label='Dirección', max_length=200, strip=True)
-    tipo_licencia = forms.CharField(label='Tipo de licencia', max_length=10, strip=True)
-    fecha_vencimiento = forms.DateField(
-        label='Fecha de vencimiento', input_formats=('%Y-%m-%d',),
-        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
-    )
-
-    def clean_nombre_completo(self):
-        nombre = ' '.join(self.cleaned_data['nombre_completo'].split())
-        corte = len(nombre) if len(nombre) <= 80 else nombre.rfind(' ', 0, 81)
-        if corte < 1 or len(nombre[corte:].strip()) > 80:
-            raise forms.ValidationError('El nombre debe caber en dos partes de hasta 80 caracteres.')
-        self.partes_nombre = (nombre[:corte], nombre[corte:].strip())
-        return nombre
-
-    def clean_cedula(self):
-        cedula = normalizar_cedula(self.cleaned_data['cedula'])
-        if Operador.objects.filter(cedula_normalizada=cedula).exists():
-            raise forms.ValidationError('Ya existe un operador con esta cédula.')
-        return cedula
-
-    @transaction.atomic
-    def save(self):
-        datos = self.cleaned_data
-        nombre, apellido = self.partes_nombre
-        return Operador.objects.create(
-            nombre=nombre, apellido=apellido, cedula=datos['cedula'],
-            telefono=datos['telefono'], direccion=datos['direccion'],
-            tipo_licencia=datos['tipo_licencia'], fecha_vencimiento=datos['fecha_vencimiento'],
-            estado='Activo',
-        )
-
+# ---------------------------------------------------------------------------
+# Usuarios
+# ---------------------------------------------------------------------------
 
 class RegistroForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ('username', 'email')
+
+    def save(self, commit=True):
+        usuario = super().save(commit=commit)
+        if commit:
+            # Sin grupo, el usuario quedaría como "Sin rol asignado".
+            grupo, _ = Group.objects.get_or_create(name=CLIENTE)
+            usuario.groups.add(grupo)
+        return usuario
+
+
+# ---------------------------------------------------------------------------
+# Mantenimientos
+# ---------------------------------------------------------------------------
+
+class UnidadMantenimientoChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, unidad):
+        return (
+            f'{unidad.codigo} · {unidad.nombre} · Serie: {unidad.numero_serie} '
+            f'· Unidad #{unidad.pk} · {unidad.get_estado_display()}'
+        )
+
+
+class MantenimientoForm(forms.Form):
+    unidad = UnidadMantenimientoChoiceField(
+        label='Maquinaria / unidad física', queryset=Unidad.objects.none(),
+        help_text='Selecciona la serie de la unidad disponible o en mantenimiento.',
+    )
+    fecha = forms.DateField(
+        label='Fecha', input_formats=('%Y-%m-%d',),
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+    )
+    tipo = forms.ChoiceField(label='Tipo de mantenimiento', choices=Mantenimiento.TIPOS)
+    descripcion = forms.CharField(
+        label='Descripción', max_length=300, strip=True, widget=forms.Textarea(attrs={'rows': 4}),
+    )
+    costo = forms.DecimalField(label='Costo', max_digits=18, decimal_places=2, min_value=0)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['unidad'].queryset = Unidad.objects.select_related('maquinaria').filter(
+            activo=True, maquinaria__activo=True, estado__in=('Disponible', 'Mantenimiento'),
+        )
+
+    @transaction.atomic
+    def save(self, *, tecnico):
+        if not permisos_panel(tecnico)['puede_registrar_mantenimiento']:
+            raise PermissionDenied
+        datos = self.cleaned_data
+        # Releer y bloquear evita sobrescribir un estado cambiado después de validar.
+        unidad = Unidad.objects.select_for_update().select_related('maquinaria').filter(pk=datos['unidad'].pk).first()
+        if unidad is None or not unidad.activo or not unidad.maquinaria.activo or unidad.estado not in ('Disponible', 'Mantenimiento'):
+            raise ValidationError('La unidad ya no está disponible para registrar mantenimiento. Selecciona otra unidad.')
+        mantenimiento = Mantenimiento(
+            unidad=unidad, tecnico=tecnico,
+            **{campo: datos[campo] for campo in ('fecha', 'tipo', 'descripcion', 'costo')},
+        )
+        mantenimiento.full_clean()
+        mantenimiento.save()
+        unidad.estado = 'Mantenimiento'
+        unidad.save(update_fields=['estado'])
+        return mantenimiento
+
+
+# ---------------------------------------------------------------------------
+# Solicitudes de alquiler
+# ---------------------------------------------------------------------------
+
+class SolicitudAlquilerForm(forms.Form):
+    fecha_inicio = forms.DateField(label='Fecha de inicio', widget=forms.DateInput(attrs={'type': 'date'}))
+    fecha_fin = forms.DateField(label='Fecha de fin', widget=forms.DateInput(attrs={'type': 'date'}))
+    comentario = forms.CharField(label='Comentario', max_length=500, required=False, widget=forms.Textarea(attrs={'rows': 3}))
+
+    def clean(self):
+        datos = super().clean()
+        inicio, fin = datos.get('fecha_inicio'), datos.get('fecha_fin')
+        if inicio and inicio < timezone.localdate():
+            self.add_error('fecha_inicio', 'La fecha de inicio no puede estar en el pasado.')
+        if inicio and fin and fin < inicio:
+            self.add_error('fecha_fin', 'La fecha de fin debe ser igual o posterior al inicio.')
+        return datos
+
+    @transaction.atomic
+    def save(self, *, cliente, unidad):
+        if not permisos_panel(cliente)['puede_solicitar_alquiler']:
+            raise PermissionDenied
+        unidad = Unidad.objects.select_for_update().select_related('maquinaria').get(pk=unidad.pk)
+        if not unidad.activo or not unidad.maquinaria.activo or unidad.estado != 'Disponible':
+            raise ValidationError('Esta unidad ya no está disponible para solicitar alquiler.')
+        datos = self.cleaned_data
+        if SolicitudAlquiler.objects.filter(unidad=unidad, estado='Aprobada', fecha_inicio__lte=datos['fecha_fin'], fecha_fin__gte=datos['fecha_inicio']).exists():
+            raise ValidationError('La unidad ya tiene una solicitud aprobada para esas fechas.')
+        if SolicitudAlquiler.objects.filter(unidad=unidad, cliente=cliente, estado='Pendiente', fecha_inicio=datos['fecha_inicio'], fecha_fin=datos['fecha_fin']).exists():
+            raise ValidationError('Ya tienes una solicitud pendiente para esta unidad y estas fechas.')
+        solicitud = SolicitudAlquiler(cliente=cliente, unidad=unidad, **datos)
+        solicitud.full_clean()
+        solicitud.save()
+        return solicitud
+
+
+# ---------------------------------------------------------------------------
+# Entregas (salida y retorno)
+# ---------------------------------------------------------------------------
+
+class FechaMovimientoField(forms.DateTimeField):
+    """datetime-local usa la zona del negocio sin cambiar la configuración global."""
+    zona = ZoneInfo('America/Santo_Domingo')
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('widget', forms.DateTimeInput(
+            format='%Y-%m-%dT%H:%M', attrs={'type': 'datetime-local'},
+        ))
+        kwargs.setdefault('input_formats', ('%Y-%m-%dT%H:%M', '%Y-%m-%dT%H:%M:%S'))
+        super().__init__(*args, **kwargs)
+
+    def to_python(self, value):
+        with timezone.override(self.zona):
+            return super().to_python(value)
+
+    def prepare_value(self, value):
+        with timezone.override(self.zona):
+            return super().prepare_value(value)
+
+
+class SalidaMaquinariaForm(forms.Form):
+    fecha_salida = FechaMovimientoField(label='Fecha y hora de salida (Santo Domingo)', initial=timezone.now)
+
+
+class RetornoMaquinariaForm(forms.Form):
+    fecha_retorno = FechaMovimientoField(label='Fecha y hora de retorno (Santo Domingo)', initial=timezone.now)

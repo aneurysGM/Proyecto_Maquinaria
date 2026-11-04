@@ -3,6 +3,7 @@
 import json
 import sqlite3
 import uuid
+from contextlib import closing
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -16,6 +17,9 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from usuarios.models import Categoria, Maquinaria, Unidad
+
+
+GRUPOS_RETIRADOS = frozenset({'Supervisor', 'Operador'})
 
 
 class Command(BaseCommand):
@@ -59,13 +63,14 @@ class Command(BaseCommand):
             f'{maquinaria[0]} unidades creadas, {maquinaria[1]} existentes.'
         ))
         self.stdout.write(self.style.SUCCESS(
-            'Verificación correcta: usuarios, hashes, roles y unidades coinciden con el origen.'
+            'Verificación correcta: usuarios, hashes, roles vigentes y unidades coinciden con el origen. '
+            'Los roles retirados Supervisor y Operador no se importan.'
         ))
 
     def _migrar_cuentas(self, ruta):
         User = get_user_model()
         creados = existentes = 0
-        with sqlite3.connect(ruta) as origen:
+        with closing(sqlite3.connect(ruta)) as origen:
             origen.row_factory = sqlite3.Row
             tablas = {
                 fila['name']
@@ -80,6 +85,8 @@ class Command(BaseCommand):
 
             grupos = {}
             for fila in origen.execute('SELECT id, name FROM auth_group'):
+                if fila['name'] in GRUPOS_RETIRADOS:
+                    continue
                 grupos[fila['id']], _ = Group.objects.get_or_create(name=fila['name'])
 
             usuarios = {}
@@ -111,7 +118,8 @@ class Command(BaseCommand):
             for fila in origen.execute(
                 'SELECT user_id, group_id FROM auth_user_groups'
             ):
-                usuarios[fila['user_id']].groups.add(grupos[fila['group_id']])
+                if fila['group_id'] in grupos:
+                    usuarios[fila['user_id']].groups.add(grupos[fila['group_id']])
 
             if {'auth_permission', 'django_content_type'}.issubset(tablas):
                 permisos = self._mapa_permisos(origen)
@@ -120,7 +128,7 @@ class Command(BaseCommand):
                         'SELECT group_id, permission_id FROM auth_group_permissions'
                     ):
                         permiso = permisos.get(fila['permission_id'])
-                        if permiso:
+                        if permiso and fila['group_id'] in grupos:
                             grupos[fila['group_id']].permissions.add(permiso)
                 if 'auth_user_user_permissions' in tablas:
                     for fila in origen.execute(
@@ -147,6 +155,8 @@ class Command(BaseCommand):
             JOIN django_content_type c ON c.id = p.content_type_id
         '''
         for fila in origen.execute(consulta):
+            if fila['app_label'] == 'usuarios' and fila['model'] == 'operador':
+                continue
             permiso = Permission.objects.filter(
                 codename=fila['codename'],
                 content_type__app_label=fila['app_label'],
@@ -226,7 +236,7 @@ class Command(BaseCommand):
     def _verificar(self, origen_sqlite, origen_json):
         User = get_user_model()
         errores = []
-        with sqlite3.connect(origen_sqlite) as origen:
+        with closing(sqlite3.connect(origen_sqlite)) as origen:
             origen.row_factory = sqlite3.Row
             for fila in origen.execute(
                 'SELECT id, username, password, is_superuser, is_staff, is_active '
@@ -252,6 +262,7 @@ class Command(BaseCommand):
                            WHERE ug.user_id = ?''',
                         (fila['id'],),
                     )
+                    if grupo['name'] not in GRUPOS_RETIRADOS
                 }
                 grupos_destino = set(
                     usuario.groups.values_list('name', flat=True)

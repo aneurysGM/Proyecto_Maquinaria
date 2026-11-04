@@ -1,0 +1,32 @@
+{% extends 'usuarios/base.html' %}
+{% block title %}Solicitudes de alquiler{% endblock %}
+{% block content %}
+<header class="page-heading"><div><h1>{% if puede_gestionar_solicitudes %}Solicitudes de alquiler{% else %}Mis solicitudes de alquiler{% endif %}</h1><p>La aprobación confirma las fechas solicitadas. La entrega y el contrato se gestionan por separado.</p></div></header>
+{% for solicitud in solicitudes %}
+<section class="card"><h2>Solicitud #{{ solicitud.id }} · {{ solicitud.unidad.nombre }}</h2>
+<dl class="details-grid">
+<div><dt>Unidad</dt><dd>{{ solicitud.unidad.numero_serie }}</dd></div>
+{% if puede_gestionar_solicitudes %}<div><dt>Cliente</dt><dd>{{ solicitud.cliente.get_full_name|default:solicitud.cliente.username }} ({{ solicitud.cliente.username }})</dd></div>{% endif %}
+<div><dt>Desde</dt><dd>{{ solicitud.fecha_inicio|date:'d/m/Y' }}</dd></div><div><dt>Hasta</dt><dd>{{ solicitud.fecha_fin|date:'d/m/Y' }}</dd></div>
+<div><dt>Estado</dt><dd>{{ solicitud.estado }}</dd></div><div><dt>Comentario</dt><dd>{{ solicitud.comentario|default:'Sin comentario' }}</dd></div>
+{% if solicitud.fecha_revision %}<div><dt>Revisada el</dt><dd>{{ solicitud.fecha_revision|date:'d/m/Y H:i' }}</dd></div>{% endif %}
+</dl>
+{% if puede_gestionar_solicitudes and solicitud.estado == 'Pendiente' %}
+<form method="post" action="{% url 'solicitud_resolver' solicitud_id=solicitud.id %}">{% csrf_token %}<div class="actions"><button class="button" name="decision" value="Aprobada" type="submit">Aprobar</button><button class="button button-secondary" name="decision" value="Rechazada" type="submit">Rechazar</button></div></form>
+{% endif %}
+{% if puede_gestionar_entregas and solicitud.estado == 'Aprobada' %}
+<div class="actions">
+    {% if solicitud.fecha_salida %}
+        <span>{{ solicitud.estado_entrega }}</span>
+        {% if not solicitud.fecha_retorno %}<a class="button" href="{% url 'entrega_retorno' solicitud_id=solicitud.id %}">Registrar retorno</a>{% endif %}
+        <a class="button button-secondary" href="{% url 'entrega_lista' %}?estado=todas">Ver historial de entregas</a>
+    {% elif solicitud.unidad.activo and solicitud.unidad.maquinaria.activo and solicitud.unidad.estado == 'Disponible' %}
+        <a class="button" href="{% url 'entrega_salida' solicitud_id=solicitud.id %}">Registrar salida</a>
+    {% else %}
+        <span>La unidad debe estar activa y Disponible para registrar la salida.</span>
+    {% endif %}
+</div>
+{% endif %}
+</section>
+{% empty %}<section class="card"><p>No hay solicitudes de alquiler.</p></section>{% endfor %}
+{% endblock %}

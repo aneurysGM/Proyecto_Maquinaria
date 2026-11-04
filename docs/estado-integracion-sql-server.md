@@ -1,6 +1,17 @@
 # Estado de la integración con SQL Server
 
+Actualización del 30 de octubre de 2026: este documento conserva las evidencias
+iniciales. Los roles actuales son Administrador, Cliente y Técnico de mantenimiento;
+operadores y Supervisor están retirados. HU-05 y HU-06 quedan retiradas, sin
+reemplazos redactados. Las migraciones y resultados actuales están en
+[retirada de operadores](retirada-operadores.md).
+
 Fecha de validación: 20 de octubre de 2026.
+
+Este documento conserva la validación inicial. Actualización del 27 de octubre
+de 2026: maquinaria, operadores y registro/historial de mantenimiento ya están
+implementados en Django. Consultar README y `hu07-mantenimiento.md` para la
+migración 0007 y las 69 pruebas actuales.
 
 ## Comprobado en este equipo
 
@@ -11,7 +22,8 @@ Fecha de validación: 20 de octubre de 2026.
 - Respaldo SQL `COPY_ONLY` creado y validado con `RESTORE VERIFYONLY` en
   `C:\Program Files\Microsoft SQL Server\MSSQL17.SQLEXPRESS\MSSQL\Backup\AlquilerEquipos_pre_django_20261020_2125.bak`.
 - Respaldos locales de `config.local.json`, `db.sqlite3` y el JSON creados en
-  `tmp/backups/20261020-211605/` (ruta ignorada por Git).
+  `tmp/backups/20261020-211605/`, conservados ahora en
+  `respaldos_locales/20261020-211605/` (ruta ignorada por Git).
 - Backend `mssql-django==2.0.0` instalado con ODBC Driver 18.
 - Migraciones aplicadas con `--fake-initial`: las tablas existentes se
   conservaron y las tablas de Django se añadieron.
@@ -34,7 +46,9 @@ Fecha de validación: 20 de octubre de 2026.
 - Ejecutar las pruebas para comprobar que su cuenta tiene permisos para crear la
   base temporal de pruebas.
 
-No quedan comprobaciones de SQL Server pendientes en este entorno. Los módulos
-de alquiler, pagos, mantenimiento y reportes todavía no están implementados en
-Django; sus objetos SQL corregidos se conservan como base para historias de
-usuario futuras.
+En aquella validación no quedaron comprobaciones SQL Server pendientes.
+Actualmente Django incluye solicitudes de alquiler con revisión administrativa
+y salida/retorno físicos mediante [HU-09](hu09-salida-retorno.md).
+HU-10 añade [reportes de lectura y descarga Excel (.xlsx)](hu10-reportes.md), sin cambios de esquema.
+Contratos, ingresos, pagos e importes de alquiler siguen fuera del flujo web.
+Sus objetos SQL se conservan y no se eliminan al retirar operadores.

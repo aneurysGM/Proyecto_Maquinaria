@@ -1,0 +1,31 @@
+{% extends 'usuarios/base.html' %}
+{% load tz %}
+{% block title %}Salidas y retornos{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <div><h1>Salidas y retornos</h1><p>Fechas y horas de Santo Domingo. Consulta las entregas pendientes o su historial.</p></div>
+    <a class="button" href="{% url 'solicitud_lista' %}">Ver solicitudes aprobadas</a>
+</header>
+<nav class="actions" aria-label="Filtrar entregas">
+    <a class="button{% if estado != 'pendientes' %} button-secondary{% endif %}" href="{% url 'entrega_lista' %}">Pendientes de devolución</a>
+    <a class="button{% if estado != 'devueltas' %} button-secondary{% endif %}" href="{% url 'entrega_lista' %}?estado=devueltas">Devueltas</a>
+    <a class="button{% if estado != 'todas' %} button-secondary{% endif %}" href="{% url 'entrega_lista' %}?estado=todas">Historial completo</a>
+</nav>
+{% for entrega in entregas %}
+<section class="card">
+    <h2>Solicitud #{{ entrega.id }} · {{ entrega.unidad.nombre }}</h2>
+    <dl class="details-grid">
+        <div><dt>Cliente</dt><dd>{{ entrega.cliente.get_full_name|default:entrega.cliente.username }} ({{ entrega.cliente.username }})</dd></div>
+        <div><dt>Unidad</dt><dd>{{ entrega.unidad.numero_serie }} · #{{ entrega.unidad_id }}</dd></div>
+        <div><dt>Estado de la entrega</dt><dd>{{ entrega.estado_entrega }}</dd></div>
+        <div><dt>Fecha de salida</dt><dd>{% timezone 'America/Santo_Domingo' %}{{ entrega.fecha_salida|date:'d/m/Y H:i' }}{% endtimezone %}</dd></div>
+        <div><dt>Entregada por</dt><dd>{{ entrega.entregado_por.get_full_name|default:entrega.entregado_por.username }}</dd></div>
+        <div><dt>Fecha de retorno</dt><dd>{% if entrega.fecha_retorno %}{% timezone 'America/Santo_Domingo' %}{{ entrega.fecha_retorno|date:'d/m/Y H:i' }}{% endtimezone %}{% else %}Pendiente{% endif %}</dd></div>
+        <div><dt>Recibida por</dt><dd>{% if entrega.recibido_por %}{{ entrega.recibido_por.get_full_name|default:entrega.recibido_por.username }}{% else %}Pendiente{% endif %}</dd></div>
+    </dl>
+    {% if not entrega.fecha_retorno %}<div class="actions"><a class="button" href="{% url 'entrega_retorno' solicitud_id=entrega.id %}">Registrar retorno</a></div>{% endif %}
+</section>
+{% empty %}
+<section class="card"><p>{% if estado == 'pendientes' %}No hay entregas pendientes de devolución.{% else %}No hay entregas para este filtro.{% endif %}</p></section>
+{% endfor %}
+{% endblock %}

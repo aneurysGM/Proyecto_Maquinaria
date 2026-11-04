@@ -2,6 +2,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <!-- Se recargará toda la página automáticamente cada 30 segundos -->
+<meta http-equiv="refresh" content="30">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -17,6 +19,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
 
     <style>
+/* ---------- Dashboard: tarjetas a la misma altura ---------- */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    align-items: stretch !important;
+}
+
+.dashboard-grid > .machinery-panel,
+.dashboard-grid > .access-panel {
+    align-self: stretch !important;
+    height: auto !important;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Que en pantallas pequeñas se apilen */
+@media (max-width: 991.98px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+}
+
         :root {
             --mq-ink: #1f2a33;
             --mq-ink-2: #28343d;
@@ -55,11 +79,22 @@
             transition: transform .25s ease;
         }
         .mq-sidebar::before {
-            content: '';
-            height: 8px;
-            flex-shrink: 0;
-            background: repeating-linear-gradient(-45deg, var(--mq-amber) 0 12px, var(--mq-ink) 12px 24px);
-        }
+    content: '';
+    height: 8px;
+    flex-shrink: 0;
+    background: repeating-linear-gradient(-45deg, var(--mq-amber) 0 12px, var(--mq-ink) 12px 24px);
+    background-size: 34px 100%;   /* ver nota abajo */
+    animation: mq-stripes 1s linear infinite;
+}
+
+@keyframes mq-stripes {
+    from { background-position: 0 0; }
+    to   { background-position: 34px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mq-sidebar::before { animation: none; }
+}
 
         .mq-main-wrap {
             margin-left: var(--mq-sidebar-w);
@@ -263,6 +298,25 @@
         @media (prefers-reduced-motion: reduce) {
             .mq-sidebar, .mq-overlay { transition: none; }
         }
+        /* Barra de scroll del menú: oculta hasta pasar el cursor */
+.mq-nav {
+    scrollbar-width: thin;                      /* Firefox */
+    scrollbar-color: transparent transparent;
+}
+.mq-nav:hover {
+    scrollbar-color: #5b6b77 transparent;
+}
+
+.mq-nav::-webkit-scrollbar { width: 8px; }      /* Chrome, Edge, Safari */
+.mq-nav::-webkit-scrollbar-track { background: transparent; }
+.mq-nav::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+    transition: background .3s;
+}
+.mq-nav:hover::-webkit-scrollbar-thumb {
+    background: var(--mq-steel);
+}
     </style>
 
     {% block extra_css %}{% endblock %}
@@ -310,26 +364,51 @@
             </a>
             {% endif %}
 
+                        {% if puede_consultar_solicitudes %}
+            <a href="{% url 'solicitud_lista' %}"
+               class="mq-nav-link {% if request.resolver_match.url_name == 'solicitud_lista' or request.resolver_match.url_name == 'solicitud_registrar' %}active{% endif %}"
+               {% if request.resolver_match.url_name == 'solicitud_lista' or request.resolver_match.url_name == 'solicitud_registrar' %}aria-current="page"{% endif %}>
+                <i class="bi bi-file-earmark-text"></i>
+                <span>Alquileres</span>
+            </a>
+            {% endif %}
+
+            {% if puede_gestionar_entregas %}
+            <a href="{% url 'entrega_lista' %}"
+               class="mq-nav-link {% if request.resolver_match.url_name in 'entrega_lista entrega_salida entrega_retorno' %}active{% endif %}">
+                <i class="bi bi-truck"></i>
+                <span>Salidas y retornos</span>
+            </a>
+            {% endif %}
+
+            {% if puede_consultar_mantenimientos %}
+            <a href="{% url 'mantenimiento_lista' %}"
+               class="mq-nav-link {% if request.resolver_match.url_name == 'mantenimiento_lista' or request.resolver_match.url_name == 'mantenimiento_registrar' or request.resolver_match.url_name == 'mantenimiento_historial' %}active{% endif %}"
+               {% if request.resolver_match.url_name == 'mantenimiento_lista' or request.resolver_match.url_name == 'mantenimiento_registrar' or request.resolver_match.url_name == 'mantenimiento_historial' %}aria-current="page"{% endif %}>
+                <i class="bi bi-tools"></i>
+                <span>Mantenimientos</span>
+            </a>
+            {% endif %}
+
+            {% if puede_ver_reportes %}
+            <a href="{% url 'reporte_indice' %}"
+               class="mq-nav-link {% if request.resolver_match.url_name == 'reporte_indice' or 'reporte_' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-graph-up"></i>
+                <span>Reportes</span>
+            </a>
+            {% endif %}
+
             <!-- Módulos pendientes de implementar -->
             <div class="mq-nav-group">Próximamente</div>
 
             <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
-                <i class="bi bi-file-earmark-text"></i><span>Alquileres</span><span class="mq-soon">Pronto</span>
-            </a>
-            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
                 <i class="bi bi-receipt"></i><span>Pagos y facturación</span><span class="mq-soon">Pronto</span>
-            </a>
-            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
-                <i class="bi bi-tools"></i><span>Mantenimientos</span><span class="mq-soon">Pronto</span>
             </a>
             <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
                 <i class="bi bi-gear"></i><span>Repuestos</span><span class="mq-soon">Pronto</span>
             </a>
             <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
                 <i class="bi bi-folder2-open"></i><span>Documentos</span><span class="mq-soon">Pronto</span>
-            </a>
-            <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
-                <i class="bi bi-graph-up"></i><span>Reportes</span><span class="mq-soon">Pronto</span>
             </a>
             <a href="#" class="mq-nav-link is-disabled" aria-disabled="true" tabindex="-1">
                 <i class="bi bi-sliders"></i><span>Configuración</span><span class="mq-soon">Pronto</span>
@@ -344,6 +423,7 @@
                 <strong>{{ nombre_usuario }}</strong>
                 <span>{{ rol_usuario }}</span>
             </div>
+            
         </div>
 
     </aside>

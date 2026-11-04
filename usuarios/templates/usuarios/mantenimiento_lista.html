@@ -1,0 +1,118 @@
+{% extends 'usuarios/base.html' %}
+
+{% block title %}Mantenimientos{% endblock %}
+{% block page_name %}Mantenimientos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mt-wrap { max-width: 1200px; margin: 1.5rem auto; }
+    .mt-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+    .mt-head h1 { font-family: 'Barlow Semi Condensed', sans-serif; font-size: 2rem; margin: 0; }
+    .mt-head p { margin: 0; color: var(--mq-steel); }
+    .mt-card { background: #fff; border-radius: var(--mq-radius); border: 1px solid var(--mq-line); box-shadow: 0 2px 12px rgba(20,30,60,.05); overflow: hidden; }
+    .mt-search { display: flex; gap: .6rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--mq-line); }
+    .mt-btn { display: inline-flex; align-items: center; gap: .45rem; padding: .55rem 1rem; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid transparent; cursor: pointer; transition: transform .15s, background .15s; }
+    .mt-btn:hover { transform: translateY(-1px); }
+    .mt-btn-primary { background: var(--mq-amber); color: var(--mq-ink); }
+    .mt-btn-primary:hover { background: var(--mq-amber-dark); color: var(--mq-ink); }
+    .mt-btn-dark { background: var(--mq-ink); color: #fff; }
+    .mt-btn-dark:hover { background: var(--mq-ink-2); color: #fff; }
+    .mt-btn-light { background: #fff; border-color: #c5ccd2; color: var(--mq-ink); }
+    .mt-btn-light:hover { background: var(--mq-concrete); color: var(--mq-ink); }
+    .mt-table { width: 100%; border-collapse: collapse; }
+    .mt-table th { text-align: left; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--mq-steel); padding: .8rem 1.25rem; background: #f6f8f9; }
+    .mt-table td { padding: .9rem 1.25rem; border-top: 1px solid var(--mq-line); vertical-align: middle; }
+    .mt-table tbody tr { transition: background .15s; }
+    .mt-table tbody tr:hover { background: #fffaf0; }
+    .mt-code { font-weight: 700; }
+    .mt-badge { display: inline-block; padding: .2rem .7rem; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+    .mt-ok { background: #e2f6e9; color: #14753a; }
+    .mt-warn { background: #fff1c9; color: #8a6400; }
+    .mt-info { background: #e1efff; color: #1a58a8; }
+    .mt-muted { background: #eceff1; color: #5b6b77; }
+    .mt-empty { padding: 3rem 1rem; text-align: center; color: var(--mq-steel); }
+    .mt-empty i { font-size: 2.5rem; display: block; margin-bottom: .5rem; color: var(--mq-amber-dark); }
+    .mt-table-scroll { overflow-x: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mt-wrap">
+
+    <div class="mt-head">
+        <div>
+            <h1>Mantenimientos</h1>
+            <p>Consulta el estado de cada unidad física y su historial de mantenimiento.</p>
+        </div>
+        {% if puede_registrar_mantenimiento %}
+        <a class="mt-btn mt-btn-primary" href="{% url 'mantenimiento_registrar' %}">
+            <i class="bi bi-plus-lg"></i> Registrar mantenimiento
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="mt-card">
+
+        <form class="mt-search" method="get">
+            <input type="search" name="q" value="{{ consulta }}" class="form-control"
+                   placeholder="Buscar por código, nombre o número de serie">
+            <button class="mt-btn mt-btn-dark" type="submit"><i class="bi bi-search"></i> Buscar</button>
+            {% if consulta %}
+            <a class="mt-btn mt-btn-light" href="{% url 'mantenimiento_lista' %}">Limpiar</a>
+            {% endif %}
+        </form>
+
+        <div class="mt-table-scroll">
+            <table class="mt-table">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Maquinaria</th>
+                        <th>Serie</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for unidad in unidades %}
+                    <tr>
+                        <td class="mt-code">{{ unidad.maquinaria.codigo }}</td>
+                        <td>{{ unidad.maquinaria.nombre }}</td>
+                        <td>{{ unidad.numero_serie }}</td>
+                        <td>
+                            <span class="mt-badge
+                                {% if unidad.estado == 'Disponible' %}mt-ok
+                                {% elif unidad.estado == 'Mantenimiento' %}mt-warn
+                                {% elif unidad.estado == 'Alquilado' %}mt-info
+                                {% else %}mt-muted{% endif %}">
+                                {{ unidad.get_estado_display }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <a class="mt-btn mt-btn-light" href="{% url 'mantenimiento_historial' unidad.pk %}">
+                                <i class="bi bi-clock-history"></i> Historial
+                            </a>
+                            {% if puede_registrar_mantenimiento %}
+                            <a class="mt-btn mt-btn-dark" href="{% url 'mantenimiento_registrar' %}?unidad={{ unidad.pk }}">
+                                <i class="bi bi-tools"></i> Registrar
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="mt-empty">
+                                <i class="bi bi-inbox"></i>
+                                No se encontraron unidades{% if consulta %} para "{{ consulta }}"{% endif %}.
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
