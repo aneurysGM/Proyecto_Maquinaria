@@ -53,11 +53,20 @@
         .mq-side h2 { font-size: clamp(2rem, 3.2vw, 2.9rem); line-height: 1.05; max-width: 22rem; }
         .mq-side p { color: #b9c4cc; font-size: 1.1rem; max-width: 24rem; }
         .mq-side .mq-hazard {
-            position: absolute;
-            left: 0; right: 0; bottom: 0;
-            height: 12px;
-            background: repeating-linear-gradient(-45deg, var(--mq-amber) 0 14px, var(--mq-ink) 14px 28px);
-        }
+    position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
+    background: repeating-linear-gradient(-45deg, var(--mq-amber) 0 14px, var(--mq-ink) 14px 28px);
+    background-size: 39.6px 100%;
+    animation: mq-hazard-move 1s linear infinite;
+}
+
+@keyframes mq-hazard-move {
+    from { background-position: 0 0; }
+    to   { background-position: 39.6px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mq-side .mq-hazard { animation: none; }
+}
 
         /* Marca */
         .mq-brand { display: inline-flex; align-items: center; gap: .6rem; text-decoration: none; color: inherit; }

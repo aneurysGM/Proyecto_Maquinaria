@@ -97,11 +97,17 @@
         }
         .mq-stage svg { width: 100%; height: auto; display: block; }
 
-        /* Cinta de precaución */
-        .mq-hazard {
-            height: 12px;
-            background: repeating-linear-gradient(-45deg, var(--mq-amber) 0 14px, var(--mq-ink) 14px 28px);
-        }
+       /* Cinta de precaución */
+.mq-hazard {
+    height: 12px;
+    background: repeating-linear-gradient(-45deg, var(--mq-amber) 0 14px, var(--mq-ink) 14px 28px);
+    background-size: 39.6px 100%;
+    animation: mq-hazard-move 1s linear infinite;
+}
+@keyframes mq-hazard-move {
+    from { background-position: 0 0; }
+    to   { background-position: 39.6px 0; }
+}
 
         /* Entrada del tractor: avanza y las ruedas giran según lo que recorre */
         .mq-tractor { animation: mq-drive 1.8s cubic-bezier(.2, .7, .2, 1) both; }
@@ -115,6 +121,11 @@
             .mq-tractor, .mq-wheel-rear, .mq-wheel-front { animation: none; }
             html { scroll-behavior: auto; }
         }
+        @media (prefers-reduced-motion: reduce) {
+    .mq-tractor, .mq-wheel-rear, .mq-wheel-front { animation: none; }
+    .mq-hazard { animation: none; }   /* <- línea nueva */
+    html { scroll-behavior: auto; }
+}
 
         /* ---------- Secciones ---------- */
         .mq-section { padding: 5rem 0; }
@@ -460,12 +471,6 @@
                         </a>
                     </div>
                     <div class="col-sm-6 col-lg-4">
-                        <a class="mq-cat" href="#">
-                            <div class="mq-icon"><i class="bi bi-tools"></i></div>
-                            <strong>Herramientas y generadores</strong>
-                            <span>Equipo de apoyo para trabajos en cualquier terreno.</span>
-                            <span class="mq-go">Ver equipos <i class="bi bi-arrow-right"></i></span>
-                        </a>
                     </div>
                 </div>
             </div>
